@@ -1,0 +1,278 @@
+
+### 프록시
+
+- 객체에서 프록시가 되려면, 클라이언트는 서버에서 요청을 한 것인지, 프록시에게 요청을 한 것인지 조차 몰라야 한다.
+- 쉽게 말해서 서버와 프록시는 같은 인터페이스를 사용해야 한다. 그리고 클라이언트가 사용하는 서버 객체를 프록시 객체로 변경헤도 클라이언트 코드를 변경하지 않고 동작할 수 있어야 한다.
+
+![[프록시 의존 관계.png]]
+
+### 프록시 주요 기능
+
+- 프록시를 통해서 할 수 있는 일은 크게 2가지로 구분할 수 있다.
+- 접근 제어
+- 권한에 따른 접근 차단
+- 캐싱
+- 지연 로딩
+- 부가 기능 추가
+- 원래 서버가 제공하는 기능에 더해서 부가 기능을 수행한다
+- 예) 요청 값이나, 응답 값을 중간에 변형한다.
+- 예) 실행 시간을 측정해서 추가 로그를 남긴다.
+- 예) 중간에 동기화 과정을 추가하여 레이스 컨디션 문제를 해결한다.
+- 프록시 객체가 중간에 있으면 크게 `접근 제어`와 `부가 기능 추가`를 수행할 수 있다.
+
+### 프록시 패턴 & 데코레이터 패턴
+
+- 둘 다 프록시를 사용하는 방법이지만 GOF 디자인 패턴에서는 이 둘을 `의도(intent)`에 따라서 프록시 패턴과 데코레이터 패턴으로 구분한다.
+- 프록시 패턴 : 접근 제어가 목적
+- 데코레이터 패턴 : 새로운 기능 추가가 목적
+
+
+### 프록시 패턴
+
+```java
+public interface Subject {
+String operation();
+}
+
+public class ProxyPatternClient {
+
+private final Subject subject;
+
+public ProxyPatternClient(Subject subject) {
+this.subject = subject;
+}
+
+public void execute() {
+subject.operation();
+}
+}
+...
+
+@Slf4j
+public class CacheProxy implements Subject {
+
+private Subject target;
+private String cacheValue;
+
+public CacheProxy(Subject target) {
+this.target = target;
+}
+
+@Override
+public String operation() {
+log.info("프록시 호출");
+if (cacheValue == null) {
+cacheValue = target.operation();
+}
+return cacheValue;
+}
+}
+
+...
+
+@Slf4j
+public class RealSubject implements Subject {
+
+@Override
+public String operation() {
+log.info("실제 객체 호출");
+sleep(1000);
+return "data";
+}
+
+private void sleep(int millis) {
+try {
+Thread.sleep(millis);
+} catch (InterruptedException e) {
+throw new RuntimeException(e);
+}
+}
+}
+
+...
+
+@Test
+void cacheProxyTest() {
+RealSubject realSubject = new RealSubject();
+CacheProxy cacheProxy = new CacheProxy(realSubject);
+ProxyPatternClient client = new ProxyPatternClient(cacheProxy);
+
+client.execute();
+client.execute();
+client.execute();
+}
+```
+
+- `Subject` 인터페이스를 만들어둔 뒤 `Client` 객체는 인터페이스에게 의존
+- `Subject`의 구현체는 `Proxy`인 `CacheProxy`와 `RealSubject`가 있고 `RealSubject`는 서버이고 프록시는 이 서버를 인자로 받아서 대리자 역할을 하게 된다.
+- 여기서 중요한 부분은 프록시 패턴은 `접근 제어`역할을 한다는 것
+- 쉽게 설명해서 클라이언트 쪽에서 데이터를 요청했을 때 프록시를 거치고 프록시에서 데이터가 존재하지 않을 경우 한 번 데이터를 가져온 뒤 캐시 필드에 저장, 그 후 클라이언트에서 동일하게 재요청 시 프록시를 거칠 때 이미 캐시 필드에 데이터가 존재함으로 서버에 접근하지 않고 메모리에서 바로 응답을 해주기에 성능 측면에서 이점을 가져갈 수 있다.
+
+### 데코레이터 패턴
+
+```java
+public interface Component {
+String operation();
+}
+
+...
+
+@Slf4j
+public class DecoratorPatternClient {
+
+private Component component;
+
+public DecoratorPatternClient(Component component) {
+this.component = component;
+}
+
+public void execute() {
+log.info("result={}", component.operation());
+}
+}
+
+...
+
+@Slf4j
+public class MessageDecorator implements Component {
+
+private Component component;
+
+public MessageDecorator(Component component) {
+this.component = component;
+}
+
+@Override
+public String operation() {
+log.info("MessageDecorator 실행");
+
+String result = component.operation();
+String decoResult = "*****" + result + "*****";
+log.info("MessageDecorator 꾸미기 적용 전={}, 적용 후={}", result, decoResult);
+return decoResult;
+}
+}
+
+...
+
+@Slf4j
+public class RealComponent implements Component {
+@Override
+public String operation() {
+log.info("RealComponent 실행");
+return "data";
+}
+}
+
+...
+
+@Test
+void decorator1() {
+RealComponent realComponent = new RealComponent();
+MessageDecorator messageDecorator = new MessageDecorator(realComponent);
+DecoratorPatternClient client = new DecoratorPatternClient(messageDecorator);
+
+client.execute();
+}
+```
+
+- 데코레이터 패턴 역시 프록시 방식과 똑같기에 `Component`인터페이스를 만들고, 클라이언트는 이 `Component`에게만 의존하며, 서버와 데코레이터 객체는 `Component`를 상속받아 구현한다.
+- 프록시 패턴처럼 데코레이터 객체는 서버 객체에게 데이터를 응답받고, 응답받은 데이터를 데코레이터 객체가 `새로운 부가 기능`을 추가하여 클라이언트에게 응답해준다.
+- 여기서 중요한 부분은 데코레이터 패턴은 `새로운 부가 기능 추가를 목적으로 한다는 것`이다.
+
+![[데코레이터 패턴 - 클래스 의존 관계.png]]
+![[데코레이터 패턴 - 런타임 의존 관계.png]]
+
+```java
+public interface Component {
+String operation();
+}
+
+...
+
+@Slf4j
+public class DecoratorPatternClient {
+
+private Component component;
+
+public DecoratorPatternClient(Component component) {
+this.component = component;
+}
+
+public void execute() {
+log.info("result={}", component.operation());
+}
+}
+
+...
+
+@Slf4j
+public class TimeDecorator implements Component {
+
+private Component component;
+
+public TimeDecorator(Component component) {
+this.component = component;
+}
+
+@Override
+public String operation() {
+log.info("TimeDecorator 실행");
+long startTime = System.currentTimeMillis();
+
+String result = component.operation();
+
+long endTime = System.currentTimeMillis();
+log.info("TimeDecorator 종료. resultTime={}ms", (endTime - startTime));
+return result;
+}
+}
+
+...
+
+@Slf4j
+public class MessageDecorator implements Component {
+
+private Component component;
+
+public MessageDecorator(Component component) {
+this.component = component;
+}
+
+@Override
+public String operation() {
+log.info("MessageDecorator 실행");
+
+String result = component.operation();
+String decoResult = "*****" + result + "*****";
+log.info("MessageDecorator 꾸미기 적용 전={}, 적용 후={}", result, decoResult);
+return decoResult;
+}
+}
+
+...
+
+@Slf4j
+public class RealComponent implements Component {
+@Override
+public String operation() {
+log.info("RealComponent 실행");
+return "data";
+}
+}
+
+...
+
+@Test
+void decorator2() {
+RealComponent realComponent = new RealComponent();
+MessageDecorator messageDecorator = new MessageDecorator(realComponent);
+TimeDecorator timeDecorator = new TimeDecorator(messageDecorator);
+DecoratorPatternClient client = new DecoratorPatternClient(timeDecorator);
+
+client.execute();
+}
+```
+
+- 프록시 체인 방식으로 데코레이터 객체를 중간에 연결하여 더 다채로운 기능을 추가할 수도 있다.
+- `client` -> `TimeDeco` -> `MessageDeco` -> `Server`

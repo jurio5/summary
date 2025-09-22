@@ -1,0 +1,204 @@
+- 전락 패턴은 그림과 같이 `Context`라는 클라이언트에 핵심 기능과 부가 기능을 넣어두고 필드로 주입받아서 구성 즉, 위임하는 방식으로 구현하는 패턴이다.
+- 단순히 클라이언트는 `Strategy`라는 인터페이스에 의존을 한 채 인터페이스들의 구현체에서 어떤 구현체가 들어오냐에 따라 결과가 달라지고, 클라이언트는 인터페이스에 의존을 하기에 변경 할 필요가 없다. 이는 `SRP`를 매우 잘 활용할 수 있는 패턴이다.
+
+- 필드에 전략을 보관하는 방식 예제
+```java
+public interface Strategy {
+void call();
+}
+
+...
+
+/**
+* 필드에 전략을 보관하는 방식
+*/
+@Slf4j
+public class ContextV1 {
+
+private Strategy strategy;
+
+public ContextV1(Strategy strategy) {
+this.strategy = strategy;
+}
+
+public void execute() {
+long startTime = System.currentTimeMillis();
+// 비즈니스 로직 실행
+strategy.call(); // 위임
+// 비즈니스 로직 종료
+long endTime = System.currentTimeMillis();
+log.info("resultTime={}", (endTime - startTime));
+}
+}
+
+...
+
+@Slf4j
+public class StrategyLogic1 implements Strategy {
+@Override
+public void call() {
+log.info("비즈니스 로직1 실행");
+}
+}
+
+@Slf4j
+public class StrategyLogic2 implements Strategy {
+@Override
+public void call() {
+log.info("비즈니스 로직2 실행");
+}
+}
+
+...
+
+/**
+* 전략 패턴 사용
+*/
+@Test
+void strategy() {
+Strategy strategyLogic1 = new StrategyLogic1();
+ContextV1 contextV1 = new ContextV1(strategyLogic1);
+contextV1.execute();
+
+Strategy strategyLogic2 = new StrategyLogic2();
+ContextV1 contextV2 = new ContextV1(strategyLogic2);
+contextV2.execute();
+}
+```
+
+- 익명 클래스 & 람다를 이용한 방식 예제
+```java
+@Test
+void strategyV2() {
+Strategy strategyLogic1 = new Strategy() {
+
+@Override
+public void call() {
+log.info("비즈니스 로직1 실행");
+}
+};
+ContextV1 contextV1 = new ContextV1(strategyLogic1);
+contextV1.execute();
+
+Strategy strategyLogic2 = new Strategy() {
+
+@Override
+public void call() {
+log.info("비즈니스 로직2 실행");
+}
+};
+ContextV1 contextV2 = new ContextV1(strategyLogic2);
+contextV2.execute();
+}
+
+@Test
+void strategyV3() {
+ContextV1 contextV1 = new ContextV1(new Strategy() {
+@Override
+public void call() {
+log.info("비즈니스 로직1 실행");
+}
+});
+contextV1.execute();
+
+ContextV1 contextV2 = new ContextV1(new Strategy() {
+@Override
+public void call() {
+log.info("비즈니스 로직2 실행");
+}
+});
+contextV2.execute();
+}
+
+@Test
+void strategyV4() {
+ContextV1 contextV1 = new ContextV1(() -> log.info("비즈니스 로직1 실행"));
+contextV1.execute(); // 다른 `Strategy`를 주입하는 방식
+
+ContextV1 contextV2 = new ContextV1(() -> log.info("비즈니스 로직2 실행"));
+contextV2.execute(); // 다른 `Strategy`를 주입하는 방식
+}
+
+@Test
+void strategyV5() {
+new ContextV1(() -> log.info("비즈니스 로직1 실행")).execute();
+new ContextV1(() -> log.info("비즈니스 로직2 실행")).execute();
+}
+```
+- 익명 클래스 & 람다 방식은 `Context`와 `Strategy`를 실행 전에 원하는 모양으로 조립해둔 뒤 `Context`를 실행하는 `선 조립 후 실행` 방식에서 매우 유용하게 사용된다.
+- `Context`와 `Strategy`를 한 번 조립하고 나면 이후에는 `Context`를 실행하기만 하면 된다. 우리가 스프링으로 애플리케이션을 개발할 때 애플리케이션 로딩 시점에 의존관계 주입을 통해 필요한 의존관계를 모두 맺어두고 난 다음에 실제 요청을 처리하는 것 과 같은 원리이다.
+- 이 방식의 단점은 `Context`와 `Strategy`를 조립한 이후에는 전략을 변경하기가 번고롭다는 점이다. 물론 `Context`에 `Setter`를 제공해서 `Strategy`를 넘겨 받아 변경하면 되지만, `Context`를 싱글톤으로 사용할 땐 동시성 이슈 등 고려할 점이 많다. 그래서 전략을 실시간으로 변경해야 하면 차라리 위에 개발한 테스트 코드처럼 `Context`를 하나 더 생성하고 그 곳에 다른 `Strategy`를 주입하는 것이 더 나은 선택일 수 있다.
+- 아래는 이러한 `선 조립 후 실행` 방식보다 더 유연한 방식의 전략 패턴이다.
+
+- 파라미터로 전달 받는 전략
+```java
+/**
+* 파라미터로 전달 받는 전략
+*/
+@Slf4j
+public class ContextV2 {
+
+public void execute(Strategy strategy) {
+long startTime = System.currentTimeMillis();
+// 비즈니스 로직 실행
+strategy.call(); // 위임
+// 비즈니스 로직 종료
+long endTime = System.currentTimeMillis();
+log.info("resultTime={}", (endTime - startTime));
+}
+
+}
+
+...
+
+@Slf4j
+public class ContextV2Test {
+
+/**
+* 전략 패턴 적용
+*/
+@Test
+void strategyV1() {
+ContextV2 context = new ContextV2();
+context.execute(new StrategyLogic1());
+context.execute(new StrategyLogic2());
+}
+}
+```
+
+- 이 방식은 `Context`와 `Strategy`를 `선 조립 후 실행`하는 방식이 아니라 `Context`를 실행할 때 마다 전략을 인자로 전달한다.
+- 클라이언트는 `Context`를 실행하는 시점에 원하는 `Strategy`를 전달할 수 있다. 따라서 이 전 방식과 비교해서 원하는 전략을 더욱 유연하게 변경할 수 있다는 장점이 있다.
+![[전략 패턴 - 파라미터 주입.png]]
+
+- 파라미터를 넘기는 방식도 익명 내부 클래스 & 람다를 사용할 수 있다.
+```java
+/**
+* 전략 패턴 익명 내부 클래스
+*/
+@Test
+void strategyV2() {
+ContextV2 context = new ContextV2();
+context.execute(new Strategy() {
+@Override
+public void call() {
+log.info("비즈니스 로직1 실행");
+}
+});
+context.execute(new Strategy() {
+@Override
+public void call() {
+log.info("비즈니스 로직2 실행");
+}
+});
+}
+
+/**
+* 전략 패턴 익명 내부 클래스2, 람다
+*/
+@Test
+void strategyV3() {
+ContextV2 context = new ContextV2();
+context.execute(() -> log.info("비즈니스 로직1 실행"));
+context.execute(() -> log.info("비즈니스 로직2 실행"));
+}
+```
