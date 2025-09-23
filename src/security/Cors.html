@@ -1,0 +1,37 @@
+
+- 브라우저는 사용자의 보안을 위해 `Same-Origin Policy` 즉, `동일 출처 정책` 을 적용합니다.
+- 좀 더 쉽게 풀어보자면, 본인이 방문한 사이트의 JS(JavaScript)코드가 무작위로 다른 서버에 요청해서 민감한 정보를 가져오기 못 하도록 제한 합니다.
+- 더 풀어서 이야기를 하면 `브라우저 보안을 위해 프로토콜 & 호스트 & 포트가 동일한 서버로만 비동기 요청을 주고 받을 수 있도록 하는 정책` 입니다.
+
+- CORS는 이 보안 제한을 완화할 수 있게 해주는 일종의 환경설정 입니다.
+- 서버가 응답에 `특수한 헤더`를 넣으면, 브라우저는 `아, 이 서버는 내가 요청하는 걸 허용했구나`라고 판단하고 요청 결과를 전달해주는 역할을 합니다.
+- `Access-Control-Allow-Origin` : 허용할 도메인(Origin)
+- `localhost:3000` : 로컬 프론트 포트 (next.js)
+- `localhost:5173` : 로컬 프론트 포트 (vite)
+- `localhost:8080` : 로컬 백엔드 포트
+- 그 외 `https://secret-fe.vercel.app`배포 주소 등
+- `Access-Control-Allow-Methods` : 허용 할 HTTP 메서드
+- `GET`,`POST`,`PUT`,`DELETE`,`PATCH` 같은 기본적인 CRUD
+- `OPTIONS`, `HEAD` 같은 특별한 옵션 까지
+- `Access-Control-Allow-Headers` : 허용할 요청 헤더
+- `Content-Type` (`application/json` 즉, CSR 방식이면 `preflight` 발생하므로 명시 필요) -> 요청 본문의 타입 (서버에서 응답해줄 때 json 방식으로 내려줄게 라는 뜻)
+- `Authorization` (JWT, Bearer 토큰), 보통 엑세스 토큰도 쿠키 방식을 사용해서 사용하진 않았습니다.
+- `Accept` -> 원하는 응답의 타입 (클라이언트에서 서버에게 요청할 때 `application/json`방식으로 요청 시 json 방식으로 내려줘 라는 뜻)
+- `Origin`
+- 사실상 `Accept`, `Origin`은 표준 헤더라서 표기 할 필요가 없습니다.
+- `X-Reqquested-With` (AJAX(비동기) 요청에서 종종 등장), 이 옵션도 CSR 방식이라면 Next.js 같은 경우에는 비동기로 돌아가기 때문에 설정 필요 X
+- `X-CSRF-Token` (CSRF 방어용 토큰 전달 시), SameSite가 지원되지 않은 경우 이러한 랜덤 토큰을 같이 내려서 방어를 하는데, 현대의 웹은 쿠키에 SameSite 설정을 통해 Lax 이상의 값을 줘서 CSRF 공격을 방어합니다.
+- 여기서 결론은 CSR 방식이고, 엑세스 토큰을 쿠키에 담아서 사용하고 있다면, Content-Type만 명시해줘도 될 것
+- 개발 편의상 `*`아스타 기호를 줘서 전부 열 수 있지만, 보통 다 열어두는건 표준 상 선호하진 않습니다.
+- `Access-Control-Allow-Credentials`: 쿠키·인증 정보 포함 허용 여부
+- `CORS 요청에서 쿠키나 인증 정보를 포함해도 된다고 서버가 허용` 하겠다는 의미
+- 클라이언트 쪽에서 fetch ~ `credentials: include` 또는 axios를 사용할 땐
+`axios.defaults.withCredentials = true`등 으로 요청을 보낼 때 서버에 true 값으로 내려줘야 쿠키나 인증 정보가 브라우저에 붙고 서버 응답도 허용
+- 실제 데이터 흐름
+- 클라이언트 -> 서버에 요청 (간단한 요청은 바로, 아닌 경우는 preflight 먼저)
+- 여기서 간단한 요청 이라는 건 `GET`,`POST`,`HEAT` 요청 즉, `Content-Type`이 `application/x-www-form-urlencoded`, `multipartform-data`, `text/palin` 같은 기본적인 요청들은 `preflight`없이 바로 서버로 전달
+- 비간단한 요청은 `PUT`,`DELETE`같은 HTTP Method 들 예로들면 `Content-Type`이 `application/json`인 경우 혹은 커스텀 헤더(`Authorization`)이 포함되어 있는 경우, `credential: include` 처럼 쿠키 관련 인증이 포함되어 있는 경우 등
+- `preflight`는 프로토콜 규약에 따라, startLine에 `OPTION`으로 들어옴
+- 서버 -> CORS 헤더 포함 응답
+- 브라우저 -> 헤더 검사 후 JS(JavaScript)로 응답 전달 (헤더가 없거나, 불일치하면 JS에 응답 안 넘김)
+- 결론은 브라우저의 보안 정책(CORS)는 많은 요청을 차단하는데, `CORS`설정을 통해 서버에서 어떤 출처(origin)에서 오는 요청을 허용할지 정의하는 것, 이를 통해 서버는 특정 출처에 대해서만 안전하게 요청을 허용할 수 있게 됩니다.
