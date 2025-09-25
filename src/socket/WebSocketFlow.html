@@ -1,0 +1,22 @@
+1. `WebSocketConfig` 에서 가장 먼저 설정 파일을 통해 웹 소켓 서버의 기본 틀을 생성
+2. `MessageService` 에서 메시지 처리를 위해 기본 인터페이스를 정의
+3. `StompMessageService, RedisMessageService`와 같은 구조체들을 구현 후 목적에 따라 구조체들을 분리
+- ex) `STOMP` : 양방향 실시간 통신용
+- ex) `Redis`: 채팅 메시지 처리용
+4. `MessageServiceFactory` 에서 구현체들을 나눈 뒤 어댑터만 추가를 하면서 메시지 프로토콜들을 관리 (상황에 맞는 메시지 서비스를 제공)
+5. `WebSocketController`에서 클라이언트 요청을 처리
+
+### 실제 메시지 흐름
+
+1. 클라이언트 연결
+- 클라이언트 → /ws 엔드포인트 연결 (WebSocketConfig)
+2. 메시지 전송 (예: 채팅)
+-   클라이언트 → /app/chat/room1 메시지 전송
+→ WebSocketController.handleChatMessage() 처리
+→ chatService(Redis) 통해 메시지 전달
+→ /topic/chat/room1 구독자들에게 전달
+3. 게임 상태 업데이트
+-    클라이언트 → /app/room/room1 상태 업데이트
+→ WebSocketController.handleRoomMessage() 처리
+→ roomService(STOMP) 통해 상태 전달
+→ /topic/room/room1 구독자들에게 전달
