@@ -1,0 +1,125 @@
+
+### WebSocketConfig
+
+```java
+/**
+ * WebSocket 및 STOMP 설정 클래스
+
+ */
+@Configuration
+@EnableWebSocketMessageBroker
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    @Value("${spring.websocket.endpoint:/ws}")
+    private String endpoint;
+
+    @Value("${spring.websocket.allowed-origins:*}")
+    private String[] allowedOrigins;
+
+    @Override
+    public void configureMessageBroker(MessageBrokerRegistry registry) {
+        // topic 부분은 topic 에 포함 된 API 의 구독자에게 브로드 캐스트 메시지를 전달합니다.
+        // queue 부분은 user 와 혼합해서 사용도 가능하고, queue 자체로도 상황에 맞게 사용을 할 수 있습니다.
+        registry.enableSimpleBroker("/topic", "/queue");
+        // 클라이언트 -> 서버로 메시지를 보낼 때 사용하는 접두사 입니다.
+        registry.setApplicationDestinationPrefixes("/app");
+        // 개인 메시지를 위한 접두사 입니다. (보통 queue 와 혼합하여 사용합니다.)
+        registry.setUserDestinationPrefix("/user");
+
+    }
+    @Override
+    public void registerStompEndpoints(StompEndpointRegistry registry) {
+        registry.addEndpoint(endpoint)
+                .setAllowedOriginPatterns(allowedOrigins)
+                .withSockJS(); // WebSocket 을 지원하지 않는 브라우저를 위해 추가
+    }
+
+}
+```
+
+- 이 부분 역시 우체국에 비유를 하자면, 우체국 건물을 세우고 운영 허가를 받는 것과 같습니다.
+- `@EnableWebSocketMessageBroker` 어노테이션은 실시간으로 우편 서비스를 사용할 수 있는 허가증, 더 정확히는 중앙 메시지 교환소를 활성화 해주는 역할을 합니다.
+- 수신된 메시지를 중간에서 전달해주는 중앙 브로커 역할을 하는데, `A`가 채팅을 보내면 구독되어 있는 그 API 내의 모든 인원에게 브로드캐스트 메시지를 전달해주는 역할을 합니다.
+- 엔드포인트와 Allow 부분은 `application.yml`파일로 넘겨서 중앙 집중 관리를 손쉽게 할 수 있도록 아키텍처를 설계했습니다.
+
+### application.yml
+```java
+quizzle:
+  messaging:
+    provider: stomp
+    room:
+      provider: stomp
+    chat:
+      provider: redis
+```
+- 이를 통해 설정 파일에서 구조체만 갈아끼워 넣으면서 관리를 하는 방식으로 설계했습니다.
+- 각 구조체에 맞게 발행/구독을 함으로써 모든 메시징 설정을 한 곳에서 중앙 집중으로 관리하는 방식 입니다.
+- 이런 구조를 통해 유연성, 확장성, 기능별로 최적화 관리, 중앙 집중 관리 등을 고려해서 설계하였습니다.
+- 예로들어, `STOMP`같은 경우는 실시간 양방향 통신에 최적화가 된 메시징 프로토콜이고, `Redis Pub/Sub`의 경우 대량의 메시지 처리에 최적화 된 메시징 프로토콜이라면, 각 용도에 맞게 편리하게 갈아끼워넣을 수 있다는 장점이 있고, 만약 채팅 쪽에서도 `STOMP`를 사용하고 싶다면 단순히 컨텍스트만 바꿔주면 동일한 인터페이스 구조로 구현을 하였기에 편리하게 바꿔끼워넣을 수 있다는 장점이 있습니다. 그 외 확장성 부분(카프카,RabbitMQ)등 간편하게 추가를 할 수도 있습니다.
+
+### application-prod.yml
+
+```java
+spring:
+  websocket:
+    endpoint: /ws
+    allowed-origins:
+      - https://quizzle.com
+      - https://www.quizzle.com
+      - https://api.quizzle.com
+```
+- 엔드포인트와 Allow 부분은 각 용도(운영,개발,테스트)에 맞게 설정을 하기 위해 세분화 시켜둠으로써 간단하게 프로필의 `active`만 바꿔가면서 사용할 수 있게 구조를 설계하였습니다.
+- `ws`라는 엔드포인트는 웹 소켓은 HTTP 방식과 다른 하나의 프로토콜이라 설정
+
+### RedisConfig
+
+```java
+/**
+ * Redis 설정 클래스
+ */
+@Configuration
+public class RedisConfig {
+    /**
+     * Redis 메시지 리스너 컨테이너 빈 등록
+     */
+    @Bean
+    public RedisMessageListenerContainer redisMessageListenerContainer(RedisConnectionFactory connectionFactory) {
+   
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+       
+        container.setConnectionFactory(connectionFactory);
+
+        return container;
+
+    }
+    /**
+     * Redis 템플릿 빈 등록 (JSON 직렬화/역직렬화 지원)
+     */
+    @Bean
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+
+        template.setConnectionFactory(connectionFactory);
+
+        // Key는 문자열 직렬화
+        template.setKeySerializer(new StringRedisSerializer());
+
+        // Value는 JSON 직렬화
+        Jackson2JsonRedisSerializer<Object> serializer = new Jackson2JsonRedisSerializer<>(Object.class);
+
+          template.setValueSerializer(serializer);
+
+          return template;
+
+      }
+
+  }
+  ```
+  - `redisMessageListenerContainer`역시 예시를 들어보면, 우체통 같은 역할을 합니다.
+  - 다른 서버나 클라이언트가 보낸 메시지를 받아서 중앙에서 메시지를 전달하는 역할을 합니다.
+  - Redis는 싱글 스레드로 동작을 하기 때문에 메시지의 순서를 보장합니다.
+  - 예로들면, 채팅방을 `Redis Pub/Sub`으로 구독을 했을 때 `A`라는 클라이언트가 메시지를 보내면 `redisMessageListenerContainer`가 메시지를 받아서, 그 구독된 채팅방 안에 있는 모든 유저에게 브로드캐스트를 해주는 브로커 역할을 합니다.
+  - 조금 더 쉽게 정리를 하면, 싱글 스레드로 동작을 한다는 것 자체가 통로가 하나라는 뜻이며, 이 하나의 통로에서 `redisMessageListenerContainer`가 메시지를 집약해서 올바른 구독자들에게 배분을 하는 역할을 합니다.
+  - 한 줄의 파이프라인처럼 작동을 하기 때문에 메시지의 순서가 바뀔 수 없어서 안정적으로 메시지를 전달할 수 있습니다.
+  - `redisTemplate` 메서드는 Java 객체 <-> Redis 데이터 간의 변환을 담당합니다.
+  - 예로들어 데이터가 들어오면 바이트코드로 들어오기 때문에 그걸 시각적으로 인지할 수 있는 형태로 직렬화/역직렬화를 하는 역할을 합니다.
