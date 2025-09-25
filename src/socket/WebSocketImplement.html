@@ -1,0 +1,164 @@
+
+### MessageCallback
+```java
+/**
+
+ * 메시지 수신 시 호출될 콜백 인터페이스
+
+ */
+
+@FunctionalInterface
+
+public interface MessageCallback {
+    /**
+     * 수신된 메시지를 처리하는 콜백 메서드, 시스템에서 메시지를 수신할 때 호출되는 메시지를 처리할 때 이 메서드를 이용해서 처리하시면 됩니다.
+     */
+    void onMessage(Object message);
+
+}
+```
+
+1. 누군가 채팅창에서 `안녕하세요` 라고 메시지를 보내면, 우체부(시스템)을 통해 수신자(클라이언트)에게 전달을 합니다.
+2. 수신자(클라이언트)에게 전달이 될 때 `onMessage` 메서드가 호출이 됩니다.
+- 예로들어 `편지가 도착했습니다.` 라는 알림을 발생하는 역할 입니다.
+3. 수신자는 `안녕하세요` 가 적힌 편지를 열어보고, 수신자(클라이언트)는 수신받은 메시지를 어떻게 처리할지 결정을 합니다.
+- 예로들어 `안녕하세요` 라고 메시지가 왔으면, `안녕하세요2` 라고 답장을 하는 방식으로 처리합니다.
+- 정말 간단하게 빗대어 요약을 하면, `수신된 메시지는` 우체부가 배달한 편지와 같습니다.
+- `onMessage`메서드는 편지를 수신자(클라이언트)에게 전달하는 역할을 합니다.
+- 수신자는 이 메시지를 보고 필요한 행동을 결정합니다.
+- 예로들어 수신자의 화면에 렌더링 해주거나, 다른 사람에게 전달하는 등의 작업을 수행합니다.
+- 다른 사람에게 전달한다. 라는 뜻은 A가 B에게 "안녕하세요"라는 메시지를 보냈다고 가정할 때, B가 이 메시지를 보고 "안녕하세요! 반갑습니다!"라고 답장을 하거나, 이 메시지를 C에게 전달할 수 있습니다. 즉, B가 A의 메시지를 C에게 전달하는 것입니다.
+- 예로들면 `귓속말` 이나 다른 채팅방으로 메시지를 전송하는 경우가 있습니다.
+-  화면에 렌더링 한다는 것은 수신된 메시지를 사용자 인터페이스에 렌더링하여 사용자가 볼 수 있도록 하는 것입니다.
+
+### 최종 정리
+- 기본적으로 이 `onMessage`메서드는 WebSocket 을 통해 양방향 통신을 하고 있다는 가정하애 메시지를 전달해주는 역할만 합니다.
+- 예로들면 채널(/topic/chat/room1)이 구독되어 있다면, 이 채널에 브로드캐스트를 하는 역할을 합니다.
+
+### MessageServiceFactory
+
+```java
+@Component
+
+@RequiredArgsConstructor
+
+public class MessageServiceFactory {
+
+
+
+    private final StompMessageService stompMessageService; // WebSocket/STOMP 기반 구현체 DI
+
+    private final RedisMessageService redisMessageService; // Redis PUB/SUB 기반 메시징 구현체 DI
+
+
+
+    // 기본 메시징 프로바이더 설정 (이 기본 프로바이더는 로비 부분에서 사용하셔도 됩니다.)
+
+    @Value("${quizzle.messaging.provider:stomp}")
+
+    private String defaultProvider;
+
+    // 룸 전용 설정 (STOMP)
+
+    @Value("${quizzle.messaging.room.provider:stomp}")
+
+    private String roomProvider;
+
+    // 채팅 전용 설정 (Redis PUB/SUB)
+
+    @Value("${quizzle.messaging.chat.provider:redis}")
+
+    private String chatProvider;
+
+
+
+
+    public MessageService getDefaultService() {
+
+        return getService(defaultProvider);
+
+    }
+
+
+
+    public MessageService getRoomService() {
+
+        return getService(roomProvider);
+
+    }
+
+
+
+    public MessageService getChatService() {
+
+        return getService(chatProvider);
+
+    }
+
+    /**
+
+     * 지정된 프로바이더의 메시지 서비스 구현체를 반환합니다.
+
+     * 핸들러 어댑터 기능 정도로 이해하시면 될 것 같습니다.
+
+     */
+
+    public MessageService getService(String provider) {
+
+        switch (provider.toLowerCase()) {
+
+            case "stomp":
+
+                return stompMessageService;
+
+            case "redis":
+
+                return redisMessageService;
+
+            default:
+
+                throw new IllegalArgumentException("지원하지 않는 메시징 프로바이더: " + provider);
+
+        }
+
+    }
+
+}
+```
+
+- 이 클래스의 내용은 이 역시 우체국에 비유하면 우체국 본부 라고 생각하면 됩니다.
+- 이 `MessageServiceFactory`는 메시지 전송 방식(STOMP, RedisPub/Sub)을 상황에 맞게 선택해주는 우체국 본부와 같습니다.
+- 각 용도(로비, 룸, 채팅 등)에 따라 적절한 전송 방식을 선택할 수 있는 일종의 어댑터 역할을 합니다.
+- 이 역시 설정 파일들을 분리하여 용도별로 수월하게 관리할 수 있도록 분리를 해뒀으며, 어떤 전송 방식을 사용할지 쉽게 변경할 수 있게 설계했습니다.
+- 이렇게 되면, 이제 구조체만 만들어준 뒤 갈아끼워서 어댑터 역할을 하는 부분에 추가만해주면, 확장성, 유연성을 모두 챙길 수 있는 구조가 되면서 추후 새로운 전송 방식 뭐, 예로들면 카프카,RabbitMQ 등 을 추가하더라도 기존 코드의 정보를 수정 할 필요가 없습니다.
+- 딱 전형적인 전략 패턴 방식으로 구현을 했으며, 다른 추가적인 구현체가 만들어져도 클라이언트가 되는 이 클래스는 코드를 수정 할 필요가 전혀 없습니다.
+
+### MessageService
+
+```java
+/**
+
+ * 메시징 서비스를 위한 추상 인터페이스 (WebSocket, STOMP, Redis, RabbitMQ, Kafka 등 확장성을 고려)
+
+ */
+
+public interface MessageService {
+
+    void send(String destination, Object message);
+
+    void sendToUser(String userId, Object message);
+
+    String subscribe(String destination, MessageCallback callback);
+
+    void unsubscribe(String subscriptionId);
+
+    boolean isConnected();
+
+    void connect();
+
+    void disconnect();
+
+}
+```
+
+- 이 클래스는 메시지 기반에서 사용되는 공통 메서드들을 추상 인터페이스로 분리하여 추후에 구조체만 바꿔끼우면 다른 메시지 프로토콜들을 손쉽게 구축할 수 있게 인터페이스를 분리하였습니다.
