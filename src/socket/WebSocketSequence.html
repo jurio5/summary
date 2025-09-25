@@ -1,0 +1,36 @@
+
+1. 8080 포트(서버1)의 A유저가 메시지를 전송:
+- A유저가 STOMP 프로토콜을 통해 /app/room/123/message 같은 경로로 메시지 전송
+
+2. 서버1의 STOMP 브로커가 메시지를 처리:
+- 서버1의 StompMessageService가 메시지를 받아 처리
+- 서버1에 연결된 STOMP 구독자들에게 메시지 전달 (같은 서버 내에서만)
+
+3. 서버1이 Redis에 메시지 발행:
+- 동시에 RedisMessageService를 통해 Redis의 채널(예: /topic/room/123)에 메시지 발행
+
+redisTemplate.convertAndSend("/topic/room/123", messageStr);
+
+4. Redis가 모든 구독 서버에 메시지 전달:
+- 해당 채널을 구독 중인 모든 서버(서버1, 서버2, ...)가 메시지를 수신
+
+5. 서버2(8081 포트)의 Redis 리스너가 메시지 수신:
+- RedisMessageListener의 onMessage 메서드가 호출됨
+
+   String channel = new String(message.getChannel(), StandardCharsets.UTF_8);
+   String messageBody = new String(message.getBody(), StandardCharsets.UTF_8);
+
+6. 서버2가 STOMP 브로커로 메시지 재발행:
+- 리스너는 수신한 메시지를 서버2의 STOMP 브로커에 그대로 재발행
+
+   messagingTemplate.convertAndSend(channel, messageBody);
+
+7. 서버2의 STOMP 브로커가 구독자(B유저)에게 전달:
+- 서버2의 STOMP 브로커는 해당 토픽("/topic/room/123")을 구독한
+- B유저에게 메시지를 웹소켓을 통해 전달
+
+### 흐름 총 정리
+
+```
+A유저 → 서버1 STOMP → Redis → 서버2 RedisListener → 서버2 STOMP → B유저
+```
