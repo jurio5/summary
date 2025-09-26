@@ -1,0 +1,101 @@
+### 1. Spring 프레임워크 코어 이벤트
+
+- ContextRefreshedEvent: ApplicationContext가 초기화되거나 새로고침될 때
+
+- ContextStartedEvent: ApplicationContext가 시작될 때
+
+- ContextStoppedEvent: ApplicationContext가 중지될 때
+
+- ContextClosedEvent: ApplicationContext가 종료될 때
+
+### 2. Spring Boot 이벤트
+
+- ApplicationStartingEvent: 애플리케이션 실행 시작 시
+
+- ApplicationEnvironmentPreparedEvent: 환경 설정 준비 완료 시
+
+- ApplicationPreparedEvent: 컨텍스트 준비 완료 시
+
+- ApplicationReadyEvent: 애플리케이션 실행 준비 완료 시
+
+- ApplicationFailedEvent: 애플리케이션 실행 실패 시
+
+### 3. Spring WebSocket 이벤트
+
+- SessionConnectEvent: WebSocket 세션 연결 시
+
+- SessionConnectedEvent: 연결 완료 시
+
+- SessionDisconnectEvent: 세션 연결 종료 시
+
+- SessionSubscribeEvent: 클라이언트가 특정 토픽 구독 시
+
+- SessionUnsubscribeEvent: 구독 해제 시
+
+### 4. Spring Security 이벤트
+
+- AuthenticationSuccessEvent: 사용자 인증 성공 시
+
+- AuthenticationFailureEvent: 사용자 인증 실패 시
+
+- InteractiveAuthenticationSuccessEvent: 대화형 인증 성공 시
+
+- LogoutSuccessEvent: 로그아웃 성공 시
+
+- AuthorizationFailureEvent: 권한 부여 실패 시
+
+### 5. Spring Data 이벤트
+
+- BeforeSaveEvent: 엔티티 저장 전 발생
+
+- AfterSaveEvent: 엔티티 저장 후 발생
+
+- BeforeDeleteEvent: 엔티티 삭제 전 발생
+
+- AfterDeleteEvent: 엔티티 삭제 후 발생
+
+- BeforeConvertEvent: 객체가 DB 형식으로 변환되기 전 발생
+
+### 6. Spring MVC 이벤트
+
+- RequestHandledEvent: HTTP 요청 처리 완료 시
+
+- ContextRefreshedEvent: Servlet 컨텍스트 초기화 시
+
+- ServletRequestHandledEvent: 서블릿 요청 처리 시
+
+### 7. Spring Cache 이벤트
+
+- CacheEvictedEvent: 캐시 항목 제거 시
+
+- CachePutEvent: 캐시에 항목 추가 시
+
+- CacheMissEvent: 캐시에서 항목 찾기 실패 시
+
+- CacheHitEvent: 캐시에서 항목 찾기 성공 시
+
+### 8. Spring Batch 이벤트
+
+- JobExecutionEvent: 작업 실행 관련 이벤트
+
+- StepExecutionEvent: 단계 실행 관련 이벤트
+
+- ChunkMessageEvent: 청크 처리 관련 이벤트
+
+### 9. Spring Integration 이벤트
+
+- IntegrationTimeoutEvent: 통합 처리 타임아웃 시
+
+- MessageHandledEvent: 메시지 처리 완료 시
+
+- MessageDeliveryExceptionEvent: 메시지 전달 실패 시
+
+### 10. Spring Cloud 이벤트
+
+- HeartbeatEvent: 서비스 헬스체크 이벤트
+
+- EnvironmentChangeEvent: 환경 설정 변경 시
+
+- RefreshEvent: 설정 새로고침 시
+
+- InstanceRegisteredEvent: 서비스 인스턴스 등록 시
