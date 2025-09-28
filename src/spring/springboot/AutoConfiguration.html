@@ -1,0 +1,27 @@
+
+### @ConditionalOnXxx
+
+- 스프링은 `@Conditional`과 관련해서 개발자가 편리하게 사용할 수 있도록 수 많은 `@ConditionalOnXxx`를 제공
+
+#### 대표적인 ConditionalOn
+
+- `@ConditionalOnClass`, `@ConditionalOnMissingClass`
+- `@ConditionalOnClass` = 클래스가 있는 경우 동작
+- `@ConditionalOnMissingClass` = 클래스가 없는 경우 동작
+
+- `@ConditionalOnBean`,`@ConditionalOnMissingBean`
+- `@ConditionalOnBean` = 빈이 등록되어 있는 경우 동작
+- `@ConditionalOnMissingBean` = 빈이 등록되어 있지 않은 경우 동작
+
+- `@CoditionalOnProperty`
+- 환경 정보가 있는 경우 동작
+
+- `@ConditionalOnResource`
+- 리소스가 있는 경우 동작
+
+- `@ConditionalOnWebApplication`, `@ConditionalOnNotWebApplication`
+- `@ConditionalOnWebApplication` = 웹 애플리케이션인 경우 동작
+- `@ConditionalOnNotWebApplication` = 웹 애플리케이션이 아닌 경우 동작
+
+- `@ConditionalOnExpression`
+- `@ConditionalOnExpression` = SpEL 표현식에 만족하는 경우 동작
