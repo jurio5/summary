@@ -1,0 +1,7 @@
+
+```java
+@Query("select m from Member m where m.username = :username and m.age = :age")
+List<Member> findUser(@Param("username") String username, @Param("age") int age);
+  ```
+
+  - `NamedQuery` 방식은 엔티티에 구현을 해야해서 유지보수를 할 때 번거롭고, 이름까지 지정을 해줘야하는 작업이 필요하지만, 리포지터리에 직접적으로 구현하는 `@Query` 방식은 직접적으로 JPQL을 통해 값을 매개변수와 바인딩 할 수 있다는 장점과 개발 편의성, 유지 보수성, `NamedQury`에서 지원하는 애플리케이션 로딩 시점에 오류를 잡아주는 기능 역시 `@Query`에서 지원을 하기에 `NamedQuery`방식보다 사용하기 편하다는 장점이 있다.
