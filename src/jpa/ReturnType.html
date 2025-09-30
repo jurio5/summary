@@ -1,0 +1,15 @@
+
+- 스프링 데이터 JPA는 유연한 반환 타입을 지원
+
+```java
+List<Member> findByUsername(String username) // 컬렉션
+  Member findByUsername(String username) // 단건
+  Optional<Member> findByUsername(String username) // 단건 Optional
+    Page<Member> findByAge(int age, Pageable pageable);
+      ```
+
+      - 컬렉션
+      - 결과 없음 : 빈 컬렉션 반환
+      - 단건 조회
+      - 결과 없음 : `null`반환
+      - 결과가 2건 이상 : `NonUniqueResultException` 예외 발생
