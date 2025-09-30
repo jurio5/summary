@@ -1,0 +1,49 @@
+
+## JPA
+
+```java
+public int bulkAgePlus(int age) {
+return em.createQuery("update Member m set m.age = m.age + 1 where m.age >= :age")
+.setParameter("age", age)
+.executeUpdate();
+}
+```
+
+
+### Spring Data JPA
+
+```java
+@Modifying(clearAutomatically = true)
+@Query("update Member m set m.age = m.age + 1 where m.age >= :age")
+int bulkAgePlus(@Param("age") int age);
+```
+
+- `@Modifying`이 `executeUpdate()` 역할을 함
+
+
+### 벌크 연산 시 주의사항
+
+- 기본적으로 JPA가 영속성 컨텍스트를 통해 `commit` 시점에 더티 체킹을 통하여 쓰기 작업을 진행하는데, 벌크 연산을 사용 시 영속성 컨텍스트를 다 무시하고 바로 쿼리를 날린다. 이렇게 되면 데이터 싱크가 맞지 않기에 데이터 정합성의 문제가 생길 수 있다.
+- 이러한 문제를 해결하기 위해선 영속성 컨텍스트를 초기화 시킨 뒤 다시 영속 상태로 만들어서 사용해야한다.
+- 혹은 Spring Data Jpa가 지원하는 `@Modifying(clearAutomatically = true)`설정을 통해 벌크 연산 후 자동으로 영속성 컨텍스트를 초기화하여 사용할 수 있다.
+```java
+@Test
+void bulkUpdate() {
+memberRepository.save(new Member("member1", 10));
+memberRepository.save(new Member("member2", 19));
+memberRepository.save(new Member("member3", 20));
+memberRepository.save(new Member("member4", 21));
+memberRepository.save(new Member("member5", 40));
+
+int resultCount = memberRepository.bulkAgePlus(20);
+
+em.flush();
+em.clear();  // 혹은 @Modifying(clearAutomatically = true) 사용
+
+List<Member> result = memberRepository.findByUsername("member5");
+  Member member5 = result.getFirst();
+  System.out.println("member5 = " + member5.getAge());
+
+  assertThat(resultCount).isEqualTo(3);
+  }
+  ```
