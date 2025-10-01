@@ -1,0 +1,17 @@
+
+- 스프링에서 트랜잭션을 관리할 때 `@Transactional`을 사용함
+- 트랜잭션이 적용되지 않으면 더티 체킹이나 롤백이 제대로 동작하지 않음
+
+```java
+@Service
+public class MemberService {
+
+@Transactional
+public void updateMember(Long memberId, String newName) {
+Member member = em.find(Member.class, memberId); member.setName(newName); // 더티 체킹
+}
+}
+```
+
+- `@Transactional`이 있으면 **트랜잭션 시작 -> 더티 체킹 -> 커밋 -> 자동 업데이트**
+- 예외 발생 시 자동 **롤백**
