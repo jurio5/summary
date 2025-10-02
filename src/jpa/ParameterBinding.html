@@ -1,0 +1,8 @@
+### Spring Data JPA
+
+```java
+@Query("select m from Member m where m.username in :names")
+List<Member> findByNames(@Param("names") Collection<String> names);
+    ```
+
+    - 기본적으로 서브쿼리를 작성할 때 `IN`절 같은 경우 조금 더 반복적인 작업들이 추가적으로 필요하지만, JPQL에선 간단한 `IN` 조건을 통해 파라미터 바인딩을 할 수 있다.
