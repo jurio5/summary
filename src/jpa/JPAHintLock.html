@@ -1,0 +1,31 @@
+
+## JPA Hint
+
+- JPA 쿼리 힌트 (SQL 힌트가 아니라 JPA 구현체에게 제공하는 힌트)
+
+```java
+class MemberRepository
+@QueryHints(value = @QueryHint(name = "org.hibernate.readOnly", value = "true"))
+Member findReadOnlyByUsername(String username);
+
+...
+
+Member findMember = memberRepository.findReadOnlyByUsername(member1.getUsername()); // 읽기 전용 최적화
+findMember.setUsername("member2"); // 변경 감지 발생 X
+```
+
+- JPA는 기본적으로 **변경 감지(dirty checking)** 를 위해 **엔티티 스냅샷**을 생성하고, 트랜잭션 커밋 시점에 변경 여부를 확인합니다.
+- 하지만 단순 조회 목적임에도 불구하고 변경 감지를 위해 **불필요한 스냅샷**이 생성되고, 성능 낭비가 발생할 수 있습니다.
+- 이럴 때 Hibernate 구현체가 제공하는 `"org.hibernate.readOnly"` 힌트를 통해 해당 엔티티를 **읽기 전용(read-only)** 으로 설정하면 아래와 같은 성능 최적화를 할 수 있습니다.
+- 스냅샷을 만들지 않습니다.
+- 변경 감지를 수행하지 않습니다.
+- `flush` 시점에도 해당 엔티티는 무시됩니다.
+
+### Hint
+
+```java
+@Lock(LockModeType.PESSIMISTIC_WRITE)
+List<Member> findLockByUsername(String username);
+    ```
+
+    - 이 부분은 더 깊은 내용으로 들어가면 트랜잭션의 격리 레벨, 비관적 락, 낙관적 락 등 제대로 다뤄야 하는 부분이라 따로 정리를 하기로 하고, 아무튼 비관적 락(`select for update`)를 JPA가 지원을 한다. 정도와 낙관적 락 역시 버전을 통해 관리를 할 수 있다 정도만 알아두면 된다.
