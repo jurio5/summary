@@ -1,0 +1,93 @@
+
+### JPA
+
+```java
+public List<Member> findByPage(int age, int offset, int limit) {
+  return em.createQuery("select m from Member m where m.age = :age order By m.username desc", Member.class)
+  .setParameter("age", age)
+  .setFirstResult(offset)
+  .setMaxResults(limit)
+  .getResultList();
+  }
+
+  public long totalCount(int age) {
+  return em.createQuery("select count(m) from Member m where m.age = :age", Long.class)
+  .setParameter("age", age)
+  .getSingleResult();
+  }
+  ```
+
+  ## Spring Data JPA
+
+  #### 페이징과 정렬 파라미터
+  - `org.springframework.data.domain.Sort` : 정렬 기능
+  - `org.springframework.data.domain.Pageable` : 페이징 기능 (내부에 `Sord` 포함)
+  - 스프링 데이터에서 인터페이스 2개로 페이징과 정렬 기능을 공용으로 사용할 수 있게 만듦
+
+  #### 특별한 반환 타입
+  - `org.springframework.data.domain.Page` : 추가 count 쿼리 결과를 포함하는 페이징 (`totalCount`)
+  - `org.springframework.data.domain.Slice` : 추가 count 쿼리 없이 다음 페이지만 확인 가능 (내부적으로 limit + 1 조회) -> 무한 스크롤 혹은 모바일에서 스크롤 시 더보기 버튼 등
+  - `List(자바 컬렉션)` : 추가 count 쿼리 없이 결과만 반환
+  #### 페이징 정렬 사용 예제
+  ```java
+  Page<Member> findByAge(int age, Pageable pageable); // count 쿼리 사용
+
+    Slice<Member> findByAge(int age, Pageable pageable); // count 쿼리 사용 X
+
+      List<Member> findByUsername(String name, Pageable pageable); // count 쿼리 사용 X
+
+        List<Member> findByUsername(String name, Sort sort);
+
+          ...
+
+          PageRequest pageRequest = PageRequest.of(0, 3, Sort.by(Sort.Direction.DESC, "username")); // 정렬 기준이 복잡해질 땐 JPQL을 통해 해결
+
+          // Page 타입을 반환 타입으로 받으면 Spring Data JPA 쪽에서 자동으로 totalCount 쿼리도 날림
+          Page<Member> page = memberRepository.findByAge(age, pageRequest);
+            ```
+
+            - `PageRequest pageRequest = PageRequest.of(0, 3);`을 이용한 페이지 계산
+            - `0` → 페이지 번호 (page number, 0부터 시작)
+            - `3` → 페이지 크기 (page size), 즉 limit
+
+            - 내부적으로는 다음과 같이 계산된다:
+            - `offset = pageNumber * pageSize`
+            - `limit = pageSize`
+
+            - 하지만 쉽게 생각하면,
+            - `pageNumber + 1` → 실제 사람이 보는 페이지 번호 (1부터 시작하는 것처럼 보이므로)
+            - `pageSize` → 가져올 데이터 개수
+
+            - 예) `PageRequest.of(158, 3);`
+            - 실제로는 **159번째 페이지**
+            - offset = 158 * 3 = 474
+            - 가져오는 데이터: **474, 475, 476**
+            - → 즉, **159페이지에 해당하는 3개의 데이터**
+            ## CountQuery
+
+            ```java
+            @Query(value = "select m from Member m left join m.team t", countQuery = "select count(m) from Member m") // 카운트 쿼리 분리로 성능 최적화
+            Page<Member> findByAge(int age, Pageable pageable);
+              ```
+
+              - `@Query`에서 `left join`을 사용하면, count 쿼리에도 조인이 포함되어 불필요한 성능 저하가 발생할 수 있음 -> `left join`이기에 쿼리 개수는 동일하기 때문
+              - 특히 페이징 처리 시 `Pageable`을 사용할 경우, 내부적으로 `countQuery`도 실행되는데, 이때 조인이 필요 없다면 제거하는 것이 성능에 유리하다.
+              - 이에 대한 해결 방법은 `@Query`의 `countQuery`속성을 직접 지정하여 조인을 제거한다.
+              - 이렇게하면 실제 데이터 조회 쿼리(`select`)는 조인을 포함하되, 카운트 쿼리는 조인 없이 간단하게 실행할 수 있다.
+              - 정리하면 조회용 쿼리는 복잡해도 괜찮지만, 카운트 쿼리는 단순한 것이 성능에 좋다. `countQuery`를 직접 지정하면 불필요한 조인을 제거할 수 있고 이는 성능 최적화로 이어진다.
+              - 그래서 Spring Data JPA 에서 `Page<>`를 반환하는 메서드는 자동으로 `count` 쿼리를 수행하는데 복잡한 조인이 많은 경우, 반드시 `countQuery`를 따로 지정해 성능 병목을 제거하는게 좋다.
+
+              ## 페이지 DTO 변환
+
+              ```java
+              class MemberRepository {
+              Page<Member> findByAge(int age, Pageable pageable);
+                }
+
+                ...
+
+                Page<Member> page = memberRepository.findByAge(age, pageRequest);
+                  Page<MemberDto> toMap = page.map(m -> new MemberDto(m.getId(), m.getUsername(), null));
+                    ```
+
+                    - API에 반환할 때 엔티티 자체를 반환하는 방식은 문제의 소지가 많기 때문에 간단하게 map을 통해 DTO로 변환하여 반환할 수 있다.
