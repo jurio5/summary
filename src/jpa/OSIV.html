@@ -1,0 +1,27 @@
+
+### Open EntityManager In View (`OSIV JPA`)
+
+- 기본적으로 JPA 의존성을 받은 뒤 애플리케이션을 구동 시 아래와 같은 경고 메시지가 출력된다.
+- `spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning`
+- `spring.jpa.open-in-view`의 기본 값은 `true`이고, 이 설정은 OSIV(Open Session In View) 전략을 사용한다.
+- JPA는 영속성 컨텍스트(EntityManager)를 통해 데이터베이스와 연결하며, 이 연결은 내부적으로 커넥션을 통해 이루어진다.
+- 보통 트랜잭션이 시작되면, 트랜잭션 매니저는 자동으로 데이터베이스 커넥션을 획득하고, 이를 트랜잭션 동기화 매니저에 저장해둔다.
+- 스프링 부트에서는 성능 최적화를 위해 HikariCp 같은 커넥션 풀을 사용하여 커넥션을 재사용한다.
+- 문제는 OSIV가 `true`일 경우, 트랜잭션이 끝났더라도 영속성 컨텍스트가 View 렌더링까지 살아있게 되며, 이러 인해 커넥션도 그 시점까지 유지되게 된다.
+- CSR 방식에서는 클라이언트에게 JSON 응답을 보내기 전까지, SSR 방식에서는 템플릿 엔진으로 뷰가 렌더링 되기 전까지 커넥션이 반환되지 않는다.
+- 이로 인해 다음과 같은 문제가 발생 할 수 있다.
+- 커넥션 풀 고갈
+- 지연 로딩 시점 예측 불가
+- 비즈니스 로직과 View 렌더링의 결합도 상승
+- 따라서 일반적으로는 OSIV를 `false`로 설정하고, 지연 로딩이 필요한 경우 서비스 계층에서 DTO로 필요한 데이터를 모두 조회한 후 반환하는 방식이 권장된다.
+
+### OSIV 장점 / 단점
+
+- OSIV를 끄면 트랜잭션을 종료할 때 영속성 컨텍스트를 닫고, 데이터베이스 커넥션도 반환된다. 따라서 커넥션 리소스를 낭비하지 않는다는 장점이 있다.
+- 그러나, OSIV를 끄면 모든 지연로딩을 트랜잭션 안에서 처리해야 한다. 따라서 많은 지연 로딩 코드를 트랜잭션 안에 넣어야 하는 단점이 있다. 그리고 뷰템플릿에서 지연로딩이 동작하지 않는다. 결론적으로 트랜잭션이 끝나기 전에 지연 로딩을 강제로 호출해 두어야 한다.
+
+### OSIV 베스트 프랙티스
+
+- 실무에서는 OSIV를 끈 상태로 복잡성을 관리하는 좋은 방법이 바로 `CQS`방식으로 분리하는 것이다.
+- 예로 들어 읽기 전용 비즈니스 로직은 `service` 패키지 밑에 `query` 디렉터리를 하나 만들고 여기에 `OrderQueryService` 같이 조회용 쿼리들을 모아두고, 쓰기 작업을 하는 핵심 비즈니스 로직들은 `service`패키지에 `OrderService` 라는 객체를 만들어서 사용하는 방식
+- 트래픽이 많은 실시간 API는 OSIV를 끄고, ADMIN 처럼 커넥션을 많이 사용하지 않는 곳에서는 OSIV 를 켜는 방식도 유효
