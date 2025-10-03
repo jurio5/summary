@@ -1,0 +1,46 @@
+
+### JPA
+```java
+@NamedQuery(
+name = "Member.findByUsername",
+query = "select m from Member m where m.username = :username"
+)
+public class Member {
+
+...
+
+public class MemberJpaRepository {
+public List<Member> findByUsername(String username) {
+  return em.createNamedQuery("Member.findByUsername", Member.class)
+  .setParameter("username", username)
+  .getResultList();
+  }
+  }
+  ```
+
+
+  ### Spring Data JPA
+
+  ```java
+  @NamedQuery(
+  name = "Member.findByUsername",
+  query = "select m from Member m where m.username = :username"
+  )
+  public class Member {
+
+  ...
+
+  public class MemberRepository {
+  @Query(name = "Member.findByUsername")
+  List<Member> findByUsername(@Param("username") String username);
+    }
+    ```
+
+    - `NamedQuery`방식을 스프링 데이터 JPA 에서 사용할 때 `@Param`을 통해 바인딩 된 필드를 명시해줘야 함
+    - 스프링 데이터 JPA 에선 `@Query`를 통해 `NamedQuery`를 명시해주지 않아도 쿼리 메서드 기능을 통해 자동으로 JPA가 동일한 쿼리를 만들어줌
+    - `@Query(name = "Member.findByUsername")` 부분을 지워도 정상적으로 동일하게 동작
+
+    ### 결론
+
+    - 기본적으로 JPQL 을 사용할 때 문법 오류가 있어도 컴파일 시점에서 잡아주지 못 하지만, `NamedQuery`방식은 애플리케이션 로딩 시점에 문법 오류가 있으면 잡아줄 수 있는 기능을 제공
+    - 이러한 기능이 있다. 정도이고, 사실 `NamedQuery`방식은 잘 사용하지 않음
