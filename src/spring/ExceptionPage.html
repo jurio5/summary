@@ -1,0 +1,18 @@
+
+### 커스텀 예외 페이지
+- 기본적으로 Spring은 `/error` 경로로 Customizer 페이지를 하나 만들어둠
+- 개발자는 오류 페이지(View)만 등록해서 사용하면 됨
+- `BasicErrorController` 의 처리 순서 (스프링에서 `/error` 에 대해 예외를 처리해둔 컨트롤러)
+- `5xx` 같은 방식으로 처리 시 `500`번 대의 StatusCode를 전부 처리하는 View 설정
+- 처리 순서는 `500` 처럼 자세한 코드에서 부터 `5xx`처럼 동적인 코드 순서
+- `500` -> `5xx`
+- `뷰 템플릿` -> `정적 리소스` -> `적용 대상 X` 순서로 우선순위가 높음
+1. 뷰 템플릿
+- `resources/templates/error/500.html`
+- `resources/templates/error/5xx.html`
+2. 정적 리소스 (`static`,`public`)
+- `resources/static/error/400.html`
+- `resources/static/error/404.html`
+- `resources/static/error/4xx.html`
+3. 적용 대상이 없을 때 뷰 이름 (`error`)
+- `resources/templates/error.html
