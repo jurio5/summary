@@ -1,0 +1,42 @@
+
+- 만약 `MemberService`가 `MemberRepository`를 필요로 한다면,
+
+```java
+public class MemberService {
+private MemberRepository memberRepository = new MemberRepository();
+}
+```
+
+- 이런 형식으로 직접 생성을 해야하는데, 이렇게 하면 **MemberService가 MemberRepository에 강하게 결합됨** → 변경하기 어려움.
+
+- **DI를 사용하면?**
+
+```java
+@Service
+public class MemberService {
+private final MemberRepository memberRepository;
+
+@Autowired // DI를 통해 주입
+public MemberService(MemberRepository memberRepository) {
+this.memberRepository = memberRepository;
+}
+}
+```
+
+- **스프링이 `MemberRepository` 객체를 알아서 찾아서 주입해 줌**
+- 개발자는 그냥 "나는 `MemberRepository`가 필요해!" 하고 선언만 하면 됨.
+- 즉, **"의존성을 직접 생성하는 것이 아니라, 외부에서 넣어준다"** → 이 개념이 바로 **DI**
+
+---
+
+#### **DI는 어떻게 동작하는가?**
+
+- `@Autowired`, 생성자 주입, 필드 주입 등 다양한 방식으로 동작함.
+- 내부적으로 **리플렉션을 사용해서 `@Autowired`가 붙은 곳을 찾아서, IoC 컨테이너에서 해당 객체를 주입해 줌.**
+- `getDeclaredConstructor()` 같은 방식으로 생성자를 확인하고, **적절한 의존성을 자동으로 연결**
+
+### ** 정리하면?**
+
+| 개념              | 설명                                        | 핵심 키워드                      |
+| --------------- | ----------------------------------------- | --------------------------- |
+| **DI (의존성 주입)** | 객체가 직접 다른 객체를 만들지 않고, 필요한 객체를 외부에서 주입받는 것 | `@Autowired`, 생성자 주입, 필드 주입 |
