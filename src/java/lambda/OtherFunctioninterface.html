@@ -1,0 +1,39 @@
+### 입력 값이 2개 이상
+- 매개변수가 2개 이상 필요한 경우에는 `BiXxx` 시리즈를 사용하면 된다.
+- Bi는 Binary(이항,둘)의 줄임말이다.
+- ex) `BiFunction`, `BiConsumer`, `BiPredicate`
+- 대부분 `Bi`를 앞에 붙여보면 거의 다 구현되어 있음
+- `Supplier`는 매개변수(입력) 값이 없기 때문에 `Bi`가 존재하지 않음
+
+### 입력 값이 3개 이상
+- 함수형 인터페이스는 기본적으로 제공하지 않음, 보통 함수형 인터페이스를 사용할 때 3개 이상의 매개변수는 잘 사용하지 않기 때문
+- 만약 3개 이상의 매개변수가 필요하다면 직접 만들어서 사용해야 함
+
+```java
+@FunctionalInterface
+interface TriFunction<A, B, C, R> {
+R apply(A a, B b, C c);
+}
+```
+
+### 기본형 함수형 인터페이스 (Primitive Function Interface)
+
+```java
+// 기본형 매개 변수, IntFunction, LongFunction, DoubleFunction
+IntFunction<String> function = x -> "숫자: " + x;
+  System.out.println("function.apply(100) = " + function.apply(100));
+
+  // 기본형 반환, ToIntFunction, ToLongFunction, ToDoubleFunction
+  ToIntFunction<String> toIntFunction = s -> s.length();
+    System.out.println("toIntFunction.applyAsInt(\"hello\") = " + toIntFunction.applyAsInt("hello"));
+
+    // 기본형 매개변수, 기본형 반환
+    IntToLongFunction intToLongFunction = x -> x * 100L;
+    System.out.println("intToLongFunction.applyAsLong(10) = " + intToLongFunction.applyAsLong(10));
+
+    // IntUnaryOperator: int -> int
+    IntUnaryOperator intUnaryOperator = x -> x * 100;
+    System.out.println("intUnaryOperator.applyAsInt(10) = " + intUnaryOperator.applyAsInt(10));
+
+    // 기타, IntConsumer, IntSupplier, IntPredicate ...
+    ```
