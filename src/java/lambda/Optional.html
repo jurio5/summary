@@ -1,0 +1,133 @@
+- `orElse()` 와 `orElseGet()`의 차이가 잘 느껴지지 않을 수 있는데, 둘의 차이를 제대로 이해하려면 즉시 평가와 지연 평가를 먼저 이해해야 한다.
+- **즉시 평가 (eager evaluation)**
+- 값(혹은 객체)을 바로 생성하거나 계산해 버리는 것
+- **지연 평가 (lazy evaluation)**
+- 값이 실제로 필요할 때(즉, 사용될 때)까지 계산을 미루는 것
+
+```java
+Logger logger = new Logger();
+logger.setDebug(true);
+logger.debug(10 + 20);
+
+System.out.println("=== 디버그 모드 끄기 ===");
+logger.setDebug(false);
+logger.debug(100 + 200);
+
+---
+public class Logger {
+public void debug(Object message) {
+if (isDebug) {
+System.out.println("[DEBUG] " + message);
+}
+}
+}
+```
+
+- 위와 같은 코드의 경우 setDebug(false) 부분에서 디버그 모드가 꺼지면 `logger.debug(100 + 200);`에 대한 연산은 이루어지고, 실제 값이 사용되는 부분이 없다.
+- 이러한 경우에는 사용하지도 않을 연산을 한 번 더 했기 때문에 리소스 낭비가 생긴다.
+- 이걸 지연 평가 방식으로 바꾸게 되면 간단하게 해결할 수 있다.
+- 전달받은 값을 출력하는 타이밍에 값을 나타내면 된다.
+
+```java
+Logger logger = new Logger();
+logger.setDebug(true);
+logger.debug(() -> 10 + 20));
+
+System.out.println("=== 디버그 모드 끄기 ===");
+logger.setDebug(false);
+logger.debug(() -> 100 + 200); // 여기선 람다를 생성할 뿐, 람다가 실행되진 않는다.
+
+---
+public class Logger {
+public void debug(Supplier<?> supplier) {
+if (isDebug) { // 디버그 모드가 false로 되어 있기에 실행되지 않는다.
+System.out.println("[DEBUG] " + supplier.get()); // 결론은 실행 X
+}
+}
+}
+```
+
+### 옵셔널이 필요한 이유
+- NullPointerException(NPE) 문제
+- 자바에서 `null`은 "값이 없음"을 표현하는 가장 기본적인 방법이다.
+- 하지만 `null`을 잘못 사용하거나 `null`참조에 대해 메서드를 호출(null.get~)하면 `NullPointerException`(NPE)이 발생하여 프로그램이 예기치않게 종료될 수 있음
+- 특히 여러 메서드가 연쇄적으로 호출되어 내부에서 `null`체크가 누락되면 추적하기 어렵고 디버깅 비용이 증가함
+
+### Optional의 등장 배경
+- 자바 8부터 `Optional`클래스를 도입했다.
+- `Optional`은 값이 "있을수도 있고 없을수도 있음"을 명시적으로 표현해주어, 메서드의 계약(Contract)이나 호출 의도를 좀 더 분명하게 드러낸다.
+- `Optional`을 사용하면 "빈 값"을 표현할 때, 더 이상 `null`자체를 넘겨주지 않고 `Optional.Empty()`처럼 의도를 드러내는 객체를 사용할 수 있다.
+- 그 결과, `Optional`을 사용하면 `null`체크 로직을 간결하게 만들고, 특정 경우에 NPE가 발생할 수 있는 부분을 빌드 타임이나 IDE, 코드 리뷰에서 더 쉽게 파악할 수 있게 해준다.
+- "값이 없을 수 있다"는 상황을 프로그래머가 명시적으로 처리하도록 유도하고, 런타임 `NullPointerException`을 사전에 예방하기 위해 도입되었다.
+- 코드를 보는 사람이나 협업하는 팀원 모두가, 해당 메서드의 반환값이 비어있을 수도 있음을 알 수 있게 되어 오류를 줄일 수 있다.
+
+### Optional의 정의
+- `java.util.Optional<T>`는 "존재할 수도 있고 존재하지 않을 수도 있는" 값을 감싸는 일종의 컨테이너 클래스이다.
+  - 내부적으로 `null`을 직접 다루는 대신 `Optional`객체에 감사서 `Optional.empty()`또는 `Optional.of(value)` 형태로 다룬다.
+
+  ### Optional을 생성하는 메서드
+  - `Optional.of(T value)`
+  - 내부 값이 확실히 `null`이 아닐 때 사용. `null`을 전달하면 `NullPointerExcetpion`발생
+  - `Optional.ofNullable(T value)`
+  - 값이 `null`일 수도 있고, 아닐 수도 있을 때 사용. `null`이면 `Optional.empty()`를 반환한다.
+  - `Optional.empty()`
+  - 명시적으로 `값이 없음`을 표현할 때 사용
+
+  ### Optional의 값을 확인하거나, 획득하는 메서드
+  1. isPresent(), isEmpty()
+  - 값이 있으면 true
+  - 값이 없으면 false를 반환. 간단 확인용.
+  - isEmpty(): 자바 11 이상에서 사용 가능. 값이 비어있으면 true, 값이 있으면 false를 반환
+
+  2. get() - 권장하지 않음
+  - 값이 있는 경우 그 값을 반환
+  - 값이 없으면 NoSuchElementException 발생
+  - 직접 사용 시 주의해야 하며, 가급적이면 orElse, orElseXxx 계열 메서드를 사용하는 것이 안전
+
+  3. orElse(T other)
+  - 값이 있으면 그 값을 반환
+  - 값이 없으면 other를 반환
+
+  4. orElseGet(Supplier〈? extends T〉 supplier)
+  - 값이 있으면 그 값을 반환
+  - 값이 없으면 supplier 호출하여 생성된 값을 반환
+
+  5. orElseThrow(...)
+  - 값이 있으면 그 값을 반환
+  - 값이 없으면 지정한 예외를 던짐
+
+  6. or(Supplier〈? extends Optional〈? extends T〉〉 supplier)
+  - 값이 있으면 해당 값을 Optional로 그대로 반환
+  - 값이 없으면 supplier가 제공하는 다른 Optional 반환
+  - 값 대신 Optional을 반환한다는 특징
+
+  # Optional 값 처리 메서드
+  - **ifPresent(Consumer〈? super T〉 action)**
+  - 값이 존재하면 action 실행
+  - 값이 없으면 아무것도 안 함
+
+  - **ifPresentOrElse(Consumer〈? super T〉 action, Runnable emptyAction)**
+  - 값이 존재하면 action 실행
+  - 값이 없으면 emptyAction 실행
+
+  - **map(Function〈? super T, ? extends U〉 mapper)**
+  - 값이 있으면 mapper를 적용한 결과 (Optional〈U〉) 반환
+  - 값이 없으면 Optional.empty() 반환
+
+  - **flatMap(Function〈? super T, ? extends Optional〈? extends U〉〉 mapper)**
+  - map과 유사하지만, Optional을 반환할 때 중첩되지 않고 평탄화(flat)해서 반환
+
+  - **filter(Predicate〈? super T〉 predicate)**
+  - 값이 있고 조건을 만족하면 그대로 반환,
+  - 조건 불만족이거나 비어있으면 Optional.empty() 반환
+
+  - **stream()**
+  - 값이 있으면 단일 요소를 담은 Stream〈T〉 반환
+  - 값이 없으면 빈 스트림 반환
+
+  ### orElse() vs orElseGet()
+  - `orElse()` -> 즉시 평가
+  - `orElseGet()` -> 지연 평가
+
+
+
