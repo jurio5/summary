@@ -1,0 +1,54 @@
+
+### 중간 연산 정리표
+
+| 연산                   | 버전  | 설명                | 예시                                    |
+| -------------------- | --- | ----------------- | ------------------------------------- |
+| filter(Predicate)    | 8   | 조건에 맞는 요소만 걸러냄    | stream.filter(x -> x > 10)            |
+| map(Function)        | 8   | 요소를 변환함           | stream.map(x -> x * 2)                |
+| flatMap(Function)    | 8   | 중첩된 구조를 평탄화       | stream.flatMap(list -> list.stream()) |
+| distinct()           | 8   | 중복 제거             | stream.distinct()                     |
+| sorted()             | 8   | 요소를 자연 정렬         | stream.sorted()                       |
+| sorted(Comparator)   | 8   | 사용자 지정 정렬         | stream.sorted((a, b) -> b - a)        |
+| peek(Consumer)       | 8   | 디버깅 용도, 요소를 들여다봄  | stream.peek(System.out::println)      |
+| limit(long)          | 8   | 앞에서부터 n개만 가져옴     | stream.limit(5)                       |
+| skip(long)           | 8   | 앞에서부터 n개 건너뜀      | stream.skip(3)                        |
+| takeWhile(Predicate) | 9   | 조건이 참인 동안 요소를 가져옴 | stream.takeWhile(x -> x < 10)         |
+| dropWhile(Predicate) | 9   | 조건이 참인 동안 요소를 건너뜀 | stream.dropWhile(x -> x < 10)         |
+| Stream.ofNullable(T) | 9   | null-safe한 스트림 생성 | Stream.ofNullable(obj)                |
+### FlatMap
+- `map`은 각 요소를 하나의 값으로 변환하지만, `flatMap`은 각 요소를 스트림(또는 여러 요소)으로 변환한 뒤 각 결과를 하나의 스트림으로 `평탄화`(flatten) 해준다.
+- 아래처럼 리스트안에 리스트가 있다고 가정하자
+```java
+[
+[1,2],
+[3,4],
+[5,6]
+]
+```
+
+- `FlatMap`을 사용하면 이 데이터를 다음과 같이 쉽게 `평탄화`(flatten)할 수 있다.
+```java
+[1,2,3,4,5,6]
+```
+
+### 최종 연산 정리표
+
+| 연산                         | 버전 | 설명                                                      | 예시                                          |
+|----------------------------|------|-----------------------------------------------------------|---------------------------------------------|
+| forEach(Consumer)          | 8    | 각 요소에 대해 작업을 수행합니다. 주로 출력이나 사이드 이펙트용입니다.      | stream.forEach(System.out::println)         |
+| forEachOrdered(Consumer)   | 8    | 순서를 유지하며 각 요소에 대해 작업을 수행합니다. 병렬 스트림에서 유용합니다. | stream.forEachOrdered(System.out::println)  |
+| toArray()                  | 8    | 스트림의 요소를 Object[] 배열로 반환합니다.                      | stream.toArray()                             |
+| toArray(IntFunction<A[]>) | 8    | 특정 타입의 배열로 스트림을 수집합니다.                           | stream.toArray(String[]::new)                |
+| reduce(BinaryOperator)     | 8    | 초기값 없이 요소를 누적하여 Optional로 반환합니다.               | stream.reduce((a, b) -> a + b)               |
+| reduce(T, BinaryOperator)  | 8    | 초기값과 함께 누적 연산을 수행하고 결과를 반환합니다.              | stream.reduce(0, Integer::sum)               |
+| reduce(U, BiFunction, BinaryOperator) | 8 | 매핑과 누적을 동시에 수행하는 고급 reduce 연산입니다.       | stream.reduce(0, (sum, i) -> sum + i, Integer::sum) |
+| collect(Collector)         | 8    | 스트림을 컬렉션 등 다양한 형태로 수집합니다.                      | stream.collect(Collectors.toList())          |
+| toList()                   | 16   | 요소를 불변 리스트로 수집합니다. Collectors.toList()와는 다릅니다. | stream.toList()                              |
+| min(Comparator)            | 8    | 최소값을 가진 요소를 Optional로 반환합니다.                      | stream.min(Comparator.naturalOrder())        |
+| max(Comparator)            | 8    | 최대값을 가진 요소를 Optional로 반환합니다.                      | stream.max(Comparator.naturalOrder())        |
+| count()                    | 8    | 스트림의 요소 개수를 반환합니다.                               | stream.count()                               |
+| anyMatch(Predicate)        | 8    | 하나라도 조건을 만족하면 true를 반환합니다.                      | stream.anyMatch(x -> x > 10)                 |
+| allMatch(Predicate)        | 8    | 모든 요소가 조건을 만족하면 true를 반환합니다.                   | stream.allMatch(x -> x > 0)                  |
+| noneMatch(Predicate)       | 8    | 모든 요소가 조건을 만족하지 않으면 true를 반환합니다.             | stream.noneMatch(x -> x < 0)                 |
+| findFirst()                | 8    | 첫 번째 요소를 Optional로 반환합니다.                          | stream.findFirst()                           |
+| findAny()                  | 8    | 병렬 처리 시 임의의 요소를 Optional로 반환합니다.               | stream.findAny()                             |
