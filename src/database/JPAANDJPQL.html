@@ -1,0 +1,76 @@
+### JPA(Java Persistence API) 란?
+
+- 스프링과 JPA는 자바 엔터프라이즈(기업) 시장의 주력 기술이다.
+- 스프링이 DI 컨테이너를 포함한 애플리케이션 전반의 다양한 기능을 제공한다면, JPA는 ORM 데이터 접근 기술을 제공한다.
+- `JPA`에서 똑같은 인스턴스를 참조해도 동일성을 보장함
+```java
+String memberId = "100";
+Member member1 = memberRepository.find(Member.class, memberId);
+Member member2 = memberRepository.find(Member.class, memberId);
+
+member1 == member2 // 동일성을 보장
+```
+- 이로 인하여 1차 캐시(영속성 컨텍스트)와 동일성을 보장한다는 뜻
+- 객체 그래프를 자유롭게 탐색할 수 있음
+- 지연 로딩(LAZY)은 객체가 실제로 사용될 때 호출
+- 즉시 로딩(EAGER)을 사용하면 `JOIN SQL`을 통해 한 번에 연관된 객체까지 미리 조회
+- 기본적으로 개발을 할 땐 지연 로딩 위주(객체를 포함 하는 필드)로 개발을 하고, 조인을 통해 성능을 끌어올려야 할 땐 즉시 로딩을 고려
+- JPA 는 이런 성능 최적화까지 코드 한 두줄로 제공
+
+### JPA 기본
+
+- JPA 는 `public` 또는 `protected` 접근 제한자를 가진 기본 생성자가 필수이다.
+- `@Entity`를 통해 객체를 테이블로 맵핑할 수 있으며, `@Table`,`@Column` 같은 어노테이션을 지원한다.
+- `@Column` 을 생략 할 경우 필드 명을 칼럼 명으로 사용을 하는데, 기본적으로 카멜 케이스를 RDBMS 관례인 스네이크 케이스로 자동 변환을 지원한다.
+- JPA 의 모든 변경은 트랜잭션 안에서 일어난다. (`@Transactional`어노테이션 필수)
+- 기본적으로 데이터 소스 및 트랜잭션 매니저 같은 경우는 스프링이랑 통합 시 자동으로 만들어주기에 JPA를 사용하기에 앞서 `EntityManager`만 DI 하여 사용하면 된다.
+- `EntityManagerFactory`, `JpaTransactionManager` 또한 JPA에서 자동화
+
+### JPQL
+
+- JPA는 `JPQL(Java Persistence Query Language)`이라는 객체지향 쿼리 언어를 제공한다.
+- 주로 여러 데이터를 복잡한 조건으로 조회할 때 사용한다. (동적인 쿼리, 다건 조회)
+- `SQL` 같은 경우 테이블을 대상으로 조회를 한다면, `JPQL`의 경우 엔티티 객체를 대상으로 SQL을 실행한다.
+- `SELECT i FROM Item i` (객체와 속성의 대소문자는 구분해야 함, 자바는 대소문자를 구분)
+
+### JPQL 파라미터
+
+- `JPQL`에서 파라미터는 다음과 같이 입력한다.
+- `where price <= :maxPrice` -> Named 방식
+- 파라미터 바인딩은 다음과 같이 입력한다.
+- `query.setParameter("maxPrice", maxPrice)` -> Key 값을 기준으로 바인딩
+
+### JPA 동적 쿼리
+
+- ORM 방식의 JPA, JPQL, Spring Data JPA뿐만 아니라 JDBC, JDBC Template, MyBatis 같은 SQL Mapper 방식 모두 **동적 쿼리 작성이 복잡**하다는 단점이 있다.
+- 이를 **깔끔하게 해결**하기 위해서는 `Querydsl`을 사용하는 것이 효과적이다.
+- `JPA`와 `Querydsl`을 함께 사용하면 **동적 쿼리 문제를 보다 직관적이고 안전하게 해결**할 수 있다.
+
+### JPA 예외
+
+- `EntityManager`의 경우 순수한 JPA 기술이며, 스프링과 관계가 없다. 이로 인하여 JPA는 자체적으로 관련 예외를 발생시키는데
+- `PersistenceException`과 그 하위 예외를 발생시키며, 추가적으로 JPA는 `IllegalStateException`,`IllegalArgumentException` 을 발생시킬 수 있다.
+- 이렇게 되면 서비스 계층이 JPA의 예외를 발생하면서 순수한 상태로 남아있을 수 없고 JPA를 의존하게 되면서 SRP를 위반하게 된다.
+- 이 문제를 해결하기 위해선 스프링에서 지원하는 스프링 예외 추상화로 변환을 해줘야 한다.
+- JPA 예외를 스프링 예외 추상화(`DataAccessException`)으로 변환을 하려면 `@Repository`를 사용하면 된다.
+- 즉, `@Service`,`@Controller`,`@Component`는 빈으로는 등록되지만, `@Repository`처럼 예외 변환 기능을 적용해주진 않으며 오로지 `@Repository`어노테이션만 이 기능을 지원한다.
+- 스프링은 `@Repository`가 붙은 클래스에 대해 AOP 기반으로 예외 변환 기능을 자동으로 적용하는데, JPA의 `PersistenceException`같은 런타임 예외를 스프링 통합 예외 계층인 `DataAccessException`으로 변환해주는 역할을 한다.
+- 이 기능은 `PersistenceExceptionTranslationPostProcessor`라는 빈이 자동으로 등록될 때 활성화되며, 이 설정을 스프링이 자동으로 해주니까 따로 설정 할 필요는 없다.
+- 그러나, `Spring Data Jpa`를 사용하면, 자동으로 내부에서 `@Repository`어노테이션을 컴포넌트 스캔 대상으로 등록해두기에 `@Repository`어노테이션을 적을 필요도 없고, 자동으로 스프링 통합 예외 계층으로 변환까지 지원한다. (이 부분은 당연히 Repository 어노테이션을 컴포넌트 스캔 대상으로 등록해주기 때문)
+
+### JPA 준영속 엔티티
+
+- 영속성 컨텍스트가 더 이상 관리하지 않는 엔티티를 말한다.
+- 준영속 엔티티란, 한 번 영속 상태였다가 현재는 영속성 컨텍스트에서 분리되어 JPA가 관리하지 않는 엔티티를 말한다. 상품 수정처럼 ID를 통해 기존 데이터를 수정할 때 자주 마주치며, 변경 사항을 DB에 반영하려면 merge() 등을 통해 다시 영속 상태로 전환해야 한다.
+- 준영속 상태인 엔티티를 다시 영속 상태로 만들기 위해선 2가지 방법이 있다.
+1. 변경 감지 기능 사용
+2. 병합(`merge`) 사용
+- 보통은 변경 감지 기능 즉, 더티 체킹을 통해 JPA 에서 자동으로 이 엔티티를 관리할 수 있도록 하는게 베스트 프랙티스 이다.
+- 병합(`merge`)를 사용하지 않는 이유는, 더티 체킹 방식처럼 필드를 선택하여 `update`를 하는 것이 아닌 모든 필드를 `update`하기에 `null`값 까지 저장이 될 수 있고, 다른 한 가지는 `em.merge(item)`같은 방식으로 준영속 엔티티를 다시 영속 엔티티로 변경할 때 기존에 파라미터로 넘어온 값을 영속성 컨텍스트에 저장하는게 아닌, 반환 된 객체를 만들어서 그 객체를 영속성 컨텍스트에 반영하게 된다.
+
+![[병합.jpg]]
+
+- `merge`는 새로운 엔티티가 아닐 때 병합을 하는 방식이고, 새로운 엔티티를 판단하는 기본 전략은 아래와 같다.
+- 식별자가 객체일 때 `null`로 판단
+- 식별자가 자바 기본 타입일 때 `0`으로 판단
+- `Persistable`인터페이스를 구현해서 판단 로직 변경 가능
