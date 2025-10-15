@@ -1,0 +1,213 @@
+
+### Spring Data
+- 해당 기술을 아는 사람이 편하게 사용하려고 쓰는 것
+- `Spring Data JPA`, `Spring Data Mongo`, `Spring Data Redis`같은 것들은 각 기술들의 내부 로직들을 알아야 제대로 사용할 수 있다는 뜻이며, 이를 모르고 `Spring Data`만 배워서 사용을 한다는 뜻은 자바를 배우지 않은 채 스프링을 사용한다는 뜻 과 비슷하다.
+
+
+### Spring Data JPA 기능 소개
+
+- Spring Data JPA는 JPA를 편리하게 사용할 수 있도록 도와주는 라이브러리이다.
+- 메서드 이름으로 쿼리를 생성해준다. (자동으로 바인딩)
+```java
+List<User> findByEmailAndName(String email, String name);
+
+    [생성된 JPQL]
+    SELECT m from Member m
+    WHERE m.email = ?1 혹은 :email
+    and m.name = ?2 혹은 :name
+    ```
+    - `@Query` 같은 어노테이션을 통해 네이티브 쿼리까지 지원한다.
+    - `@Query`를 이용하여 JPQL을 사용할 땐 파라미터에 `@Param`을 추가하여 바인딩을 해줘야 한다.
+
+
+    ### Spring Data JPA가 제공하는 쿼리 메서드 기능
+    - 조회 : `find...By`, `read...By`, `query...By`,`get...By`
+    - 예 : `findHelloBy`처럼 ...에 식별하기 위한 내용(설명)이 들어가도 된다.
+    - COUNT : `count...By` 반환타입 `long`
+    - EXISTS : `exists...By` 반환타입 `boolean`
+    - 삭제 : `delete...By`, `remove...By` 반환타입 `long`
+    - DISTINCT : `findDistinct`,`findMemberDistinctBy`
+    - LIMIT : `findFirst3`, `findFirst`, `findTop`, `findTop3`
+
+    ### 사용자 정의 리포지터리
+
+    - 스프링 데이터 JPA 리포지터리는 인터페이스만 정의하고 구현체는 스프링이 자동 생성
+    - 스프링 데이터 JPA가 제공하는 인터페이스를 직접 구현하면 구현해야 하는 기능이 너무 많음
+    - 다양한 이유로 인터페이스의 메서드를 직접 구현하고 싶을 때가 있음
+    - JPA 직접 사용 (`EntityManager`)
+    - 스프링 JDBC Tempalte 사용
+    - MyBatis 사용
+    - 데이터베이스 커넥션 직접 사용
+    - QueryDSL 사용 등
+
+    ```java
+    public interface MemberRepositoryCustom {
+    List<Member> findMemberCustom();
+        }
+
+        ...
+
+        @RequiredArgsConstructor
+        public class MemberRepositoryImpl implements MemberRepositoryCustom {
+
+        private final EntityManager em;
+
+        @Override
+        public List<Member> findMemberCustom() {
+            return em.createQuery("select m from Member m", Member.class)
+            .getResultList();
+            }
+
+            ...
+
+            public interface MemberRepository extends JpaRepository<Member, Long>, MemberRepositoryCustom { // 커스텀 한 객체를 인터페이스 상속
+
+            List<Member> findByUsernameAndAgeGreaterThan(String username, int age);
+
+                //    @Query(name = "Member.findByUsername")
+                List<Member> findByUsername(@Param("username") String username);
+
+                    ...
+
+                    ```
+
+                    - 사용자 정의 리포지터리를 사용할 때 한 가지 규칙이 있는데, 이 부분은 커스텀 인터페이스의 구현체의 클래스 명에 대한 부분인데 만약 `MemberRepository`에서 커스텀 인터페이스를 상속받는다면, 그 커스텀 인터페이스의 구현체는 `MemberRepository`뒤에 `Impl`을 붙여주면 Spring Data JPA가 스스로 찾아서 연결시켜준다.
+                    - `MemberRepositoryImpl`
+                    - 사용자 정의 리포지터리의 경우 자칫 잘못하면 오히려 그 리포지터리의 결합도를 올리고 복잡도를 증가시키는 방식으로 설계가 될 수 있는데, 이런 경우에는 차라리 쿼리와 커맨드를 분리를하여 리포지터리를 빈으로 등록 후 사용하는것도 한 가지 방법이 될 수 있다.
+                    - 예로 들어 `MemberQueryRepository`를 인터페이스가 아닌 클래스로 만들고 스프링 빈으로 등록해서 그냥 직접 사용하면 스프링 데이터 JPA 와는 아무런 관계 없이 별도로 동작하게 된다.
+
+
+                    ### Closed Projection (프로젝션)
+
+                    ```java
+                    public interface UsernameOnly {
+                    String getUsername();
+                    }
+
+                    ...
+
+                    public class MemberRepository extend ~
+                    List<UsernameOnly> findProjectionByUsername(@Param("username") String username);
+                        ```
+
+                        - 단순히 인터페이스만 반환 타입으로 받으면 쿼리 메서드 기능처럼 자동으로 값을 넣어서 프록시 객체를 생성
+
+                        ### Open Projection (프로젝션)
+
+                        ```java
+                        public interface UsernameOnly {
+                        @Value("#{target.username + '' + target.age}")
+                        String getUsername();
+                        }
+
+                        ...
+
+                        public class MemberRepository extend ~
+                        List<UsernameOnly> findProjectionByUsername(@Param("username") String username);
+                            ```
+
+                            - `SpEL(Spring Expression Language)`표현식을 통해 동적 쿼리를 조합할 수 있음
+
+                            ### Class-based (DTO)
+
+                            ```java
+                            public class UsernameOnlyDto {
+                            private final String username;
+
+                            public UsernameOnlyDto(String username) {
+                            this.username = username;
+                            }
+                            }
+
+                            ...
+
+                            public class MemberRepository extend ~
+                            List<UsernameOnlyDto> findProjectionByUsername(@Param("username") String username);
+                                ```
+
+                                ### Dynamic Projection (프로젝션)
+
+                                ```java
+                                public class UsernameOnlyDto {
+                                private final String username;
+
+                                public UsernameOnlyDto(String username) {
+                                this.username = username;
+                                }
+                                }
+
+                                ...
+
+                                public class MemberRepository extend ~
+                                <T> List<T> findProjectionByUsername(@Param("username") String username, Class<T> type);
+                                    ```
+
+                                    ### NestedClosedProjections (중첩 프로젝션)
+
+                                    ```java
+                                    public interface NestedClosedProjections {
+
+                                    String getUsername();
+
+                                    TeamInfo getTeam();
+
+                                    interface TeamInfo {
+                                    String getName();
+                                    }
+                                    }
+                                    ```
+
+                                    - 프로젝션 대상이 root 엔티티면, JPQL SELECT 절 최적화 가능
+                                    - 프로젝션 대상이 ROOT가 아니면
+                                    - LEFT OUTER JOIN 처리
+                                    - 모든 필드를 SELECT 해서 엔티티로 조회한 다음에 계산
+
+                                    ### 프로젝션 결론
+
+                                    - 프로젝션 대상이 root 엔티티면 유용하다.
+                                    - 프로젝션 대상이 root 엔티티를 넘어가면 JPQL SELECT 최적화가 안 된다.
+                                    - 실무의 복잡한 쿼리를 해결하기에는 한계가 있다.
+                                    - 실무에서는 단순할 때만 사용하고, 조금만 복잡해지면 QueryDSL을 사용하자.
+
+                                    ### 네이티브 쿼리 (Native Query)
+
+                                    - 순수 SQL을 통해 쿼리를 날리는 방식
+                                    - 가급적 네이티브 쿼리는 사용하지 않는게 좋음, 정말 어쩔 수 없을 때 사용
+                                    - 웬만하면 Spring Data Projection 활용
+                                    #### 스프링 데이터 JPA 기반 네티이브 쿼리
+                                    - 페이징 지원
+                                    - 반환 타입
+                                    - Object[]
+                                    - Tuple
+                                    - DTO (Spring Data Interface Projections 지원)
+                                    - 제약
+                                    - Sort 파라미터를 통한 정렬이 정상 동작하지 않을 수 있음 (믿지 말고 직접 처리)
+                                    - JPQL 처럼 애플리케이션 로딩 시점에 문법 확인 불가능
+                                    - 동적 쿼리 불가
+                                    - JPQL은 위치 기반 파라미터를 1부터 시작하지만, 네이티브 SQL은 0부터 시작
+                                    - 네이티브 SQL을 DTO로 조회할 때는 JdbcTemplate 또는 myBatis 권장
+
+                                    #### 네이티브 쿼리 Projection
+
+                                    ```java
+                                    public interface MemberProjection {
+
+                                    Long getId();
+
+                                    String getUsername();
+
+                                    String getTeamName();
+                                    }
+
+                                    ...
+
+                                    public class MemberRepository extend ~
+                                    @Query(value = "select m.member_id as id, m.username, t.name as teamName " +
+                                    "from member m left join team t",
+                                    countQuery = "select count(*) from member",
+                                    nativeQuery = true)
+                                    Page<MemberProjection> findByNativeProjection(Pageable pageable);
+                                        ```
+
+                                        - 네이티브 쿼리를 사용해야하는 상황이고, 동적이 아닌 정적 네이티브 쿼리 일 경우 사용할만 하지만, 웬만하면 Spring JdbcTemplate 또는 MyBatis 권장 (최대한 네이티브 쿼리는 안 쓰는게 베스트)
+                                        - 장점이라고 한다면 Pageable 을 사용할 수 있다는 점
