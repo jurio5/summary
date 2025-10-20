@@ -1,0 +1,67 @@
+### 1. 일대일(1:1) 관계의 의미
+
+- 한 테이블의 한 행이 다른 테이블의 단 하나의 행과 연결
+- **1:N보다 드묾** (합쳐버리는 게 효율적이기 때문)
+
+### 2. 테이블을 분리하는 이유
+
+| 케이스            | 설명                          |
+| -------------- | --------------------------- |
+| **성능 최적화**     | 자주 쓰는 정보와 큰 데이터를 분리         |
+| **보안 강화**      | 민감 데이터는 별도 테이블에 권한 제한       |
+| **선택적 정보 표현**  | 일부 사용자만 가지는 정보 (판매자, 관리자 등) |
+| **비즈니스 구조 분리** | 주문–배송처럼 역할이 다른 경우           |
+### 3. 일대일 관계 구현
+
+#### 기본 구조
+
+```sql
+CREATE TABLE member (
+member_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+name VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE member_detail (
+member_detail_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+member_id BIGINT NOT NULL,
+bio TEXT,
+mbti VARCHAR(10),
+UNIQUE KEY uq_member_id (member_id),
+CONSTRAINT fk_detail_member FOREIGN KEY (member_id)
+REFERENCES member (member_id)
+);
+```
+- `UNIQUE` 제약조건이 **1:1 관계의 핵심**
+- 중복된 `member_id` 불가 → 한 회원당 한 상세정보만 가능
+
+### 4. 외래 키 위치 (두 가지 방법)
+
+| 방식                    | 설명                                                  | 장점                 |
+| --------------------- | --------------------------------------------------- | ------------------ |
+| **① 보조 테이블에 FK (권장)** | `member_detail.member_id → member.member_id`        | 주 테이블 독립성, 확장성 높음  |
+| **② 주 테이블에 FK**       | `member.detail_id → member_detail.member_detail_id` | 관계 방향 명확하지만 유연성 낮음 |
+### 5. 다대다(M:N) 관계
+
+- 관계형 모델에서는 직접 구현 불가 → **중간 테이블(연결 테이블)** 필요
+예: `student` ↔ `course` → `enrollment(student_id, course_id)`
+
+- 연결 테이블 구조
+```sql
+CREATE TABLE enrollment (
+student_id BIGINT,
+course_id BIGINT,
+PRIMARY KEY (student_id, course_id),
+FOREIGN KEY (student_id) REFERENCES student(student_id),
+FOREIGN KEY (course_id) REFERENCES course(course_id)
+);
+```
+- PK를 복합키로 구성하여 **중복 관계 방지**
+- 중간 테이블에 추가 속성(등록일, 성적 등)도 포함 가능
+
+### 총 정리
+
+|관계 유형|FK 위치|특징|
+|---|---|---|
+|1:1|어느 쪽이든 가능 (보조 테이블 권장)|`UNIQUE`로 제약|
+|1:N|항상 “N”쪽|FK 한 곳|
+|N:M|중간 테이블 생성|복합키 사용|
