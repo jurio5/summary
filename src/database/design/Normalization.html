@@ -1,0 +1,117 @@
+## 정규화 (Normalization)
+
+- 데이터 중복을 최소화하고 일관성을 보장하여 **이상현상(Anomaly)**을 방지하는 **데이터베이스 설계 절차**
+
+### 개요
+- 제안자: **에드거 F. 커드 (Edgar F. Codd)**
+- 목적: 데이터 중복 제거, 무결성 보장, 유연한 구조 확보
+- 핵심 개념: **함수 종속성 (Functional Dependency)**
+- `X → Y`: X가 Y를 유일하게 결정
+- X = 결정자(Determinant) / Y = 종속자(Dependent)
+
+### 비정규화된 테이블의 문제 (Anomalies)
+
+예: `disaster_orders` (모든 데이터가 한 테이블에 몰려 있음)
+
+- **갱신 이상(Update Anomaly)**
+하나의 데이터 수정이 여러 행에 반복 필요
+
+- **삽입 이상(Insertion Anomaly)**
+주문이 없으면 회원/상품 등록 불가
+
+- **삭제 이상(Deletion Anomaly)**
+주문 삭제 시 회원/상품 정보까지 사라짐
+
+## 제1 정규형 (1NF)
+
+>테이블의 모든 컬럼이 **원자적(Atomic)** 값을 가져야 한다.
+
+- 한 칸에 여러 정보(`10:노트북:2:1500000,15:키보드...`) → X
+- 각 상품을 **별도 행**으로 분리 → O
+
+**핵심 규칙:**
+
+> 컬럼은 더 이상 쪼갤 수 없는 단일 값만 가져야 한다.
+
+
+## 제2 정규형 (2NF)
+
+> 제1정규형을 만족하면서, **부분 함수 종속(Partial Dependency)**을 제거한다.
+
+- 복합키 `(order_id, product_id)` 중 일부에만 종속된 컬럼이 있으면 X
+- 예: `order_id → member_name`
+
+- 해결: **의미별로 테이블 분리**
+- `orders(order_id, member_id, ordered_at)`
+- `product(product_id, name, price)`
+- `order_item(order_id, product_id, quantity, order_price)`
+
+**핵심 규칙:**
+
+> 모든 컬럼은 기본키 전체에 완전 종속해야 한다.
+> 사실상 2NF 의 경우 대체 키(Surrogate key)를 사용 시 발생하지 않음
+
+## 제3 정규형 (3NF)
+
+> 제2정규형을 만족하면서 **이행적 함수 종속(Transitive Dependency)**을 제거한다.
+
+- `order_id → member_id → member_name`
+(`member_name`이 기본키가 아닌 컬럼에 종속됨)
+
+- 해결: `member(member_id, member_name)` 테이블로 분리
+
+**핵심 규칙:**
+
+> 기본키가 아닌 컬럼이 다른 컬럼을 결정하면 안 된다.
+
+## BCNF (Boyce–Codd Normal Form)
+
+> 제3정규형보다 강화된 형태.
+> **모든 결정자(Determinant)는 후보키(Candidate Key)** 여야 한다.
+
+### 예시: 특강 수강신청 테이블
+
+| student_id | lecture_name | professor_name |
+| ---------- | ------------ | -------------- |
+| 101        | 데이터베이스       | 김교수            |
+| 101        | 자바           | 서교수            |
+| 102        | 데이터베이스       | 박교수            |
+- 종속성:
+- `{student_id, lecture_name} → professor_name`
+- `professor_name → lecture_name` X (교수는 하나의 강의만 담당)
+
+- 해결:
+- `professor(professor_name, lecture_name)`
+- `enrollment(student_id, professor_name)`
+
+
+**핵심 규칙:**
+
+> 결정자가 후보키가 아닐 경우, 해당 종속성을 분리한다.
+
+## 실무와 정규화
+
+### 정규화의 장점
+
+- 데이터 중복 최소화
+- 무결성 및 일관성 확보
+- 이상현상 방지
+- 유연한 구조 설계 가능
+
+### 실무적 고려
+
+- **보통 3NF 또는 BCNF까지** 정규화
+- 하지만 `JOIN`이 많아져 **성능 저하** 발생 시
+→ **역정규화(Denormalization)** 고려
+(중복을 허용하여 조회 성능 향상)
+
+- “정규화는 규칙 암기가 아니라 **논리적 검증 도구**”
+- 직관적인 엔티티 구분과 종속성 판단이 곧 정규화의 실천
+
+### 정리
+
+> 정규화란,
+> “**데이터 중복을 줄이고, 이상현상을 방지하기 위한 체계적 절차**”
+>
+- 실무 목표: **3NF ~ BCNF 수준**
+- 필요 시 성능 고려로 **역정규화 병행**
