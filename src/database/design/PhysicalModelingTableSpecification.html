@@ -1,0 +1,111 @@
+## 테이블 정의서
+
+---
+
+### Member 테이블
+
+**설명**: 쇼핑몰에 가입한 회원의 기본 정보를 저장하는 테이블
+
+|No|컬럼 한글명|컬럼 영문명|데이터 타입|제약 조건|비고|
+|---|---|---|---|---|---|
+|1|회원 ID|`member_id`|`BIGINT`|PK|회원의 고유 식별자|
+|2|로그인 ID|`login_id`|`VARCHAR(50)`|UQ|로그인 시 사용|
+|3|비밀번호|`password`|`VARCHAR(255)`||암호화하여 저장|
+|4|회원명|`member_name`|`VARCHAR(50)`||실명|
+|5|이메일|`email`|`VARCHAR(100)`|UQ|인증 및 소통용|
+|6|주소|`addr`|`VARCHAR(255)`|NULL|배송지 주소|
+|7|가입일|`created_at`|`DATETIME`||회원 가입 시점|
+|8|수정일|`updated_at`|`DATETIME`||수정 시 자동 갱신|
+
+---
+
+### Product 테이블
+
+**설명**: 쇼핑몰에서 판매하는 상품 정보를 저장하는 테이블
+
+|No|컬럼 한글명|컬럼 영문명|데이터 타입|제약 조건|비고|
+|---|---|---|---|---|---|
+|1|상품 ID|`product_id`|`BIGINT`|PK|상품의 고유 식별자|
+|2|상품명|`product_name`|`VARCHAR(100)`||상품 이름|
+|3|상품 가격|`product_price`|`INT`||현재 판매 가격|
+|4|재고 수량|`stock_quantity`|`INT`||기본값 `0`|
+|5|상품 등록일|`created_at`|`DATETIME`||등록 시점|
+|6|수정일|`updated_at`|`DATETIME`||수정 시 자동 갱신|
+
+**인덱스**
+
+|인덱스명|컬럼|비고|
+|---|---|---|
+|`idx_product_name`|`product_name`|상품명 검색용 인덱스|
+
+---
+
+### Orders 테이블
+
+**설명**: 회원의 주문 정보를 저장하는 테이블
+
+|No|컬럼 한글명|컬럼 영문명|데이터 타입|제약 조건|비고|
+|---|---|---|---|---|---|
+|1|주문 ID|`order_id`|`BIGINT`|PK|주문의 고유 식별자|
+|2|회원 ID|`member_id`|`BIGINT`|FK|`member.member_id` 참조|
+|3|주문일시|`ordered_at`|`DATETIME`||비즈니스 시점의 주문 시간|
+|4|주문 상태|`order_status`|`VARCHAR(20)`||기본값 `ORDERED`|
+|5|총 주문 금액|`total_amount`|`INT`||역정규화된 합계 컬럼|
+|6|생성일|`created_at`|`DATETIME`||시스템 생성 시점|
+|7|수정일|`updated_at`|`DATETIME`||수정 시 자동 갱신|
+
+**인덱스**
+
+|인덱스명|컬럼|비고|
+|---|---|---|
+|`idx_order_status_ordered_at`|`order_status`, `ordered_at`|주문 상태·기간별 조회용 복합 인덱스|
+
+---
+
+### Order_Item 테이블
+
+**설명**: 주문에 포함된 개별 상품 내역을 저장하는 테이블
+
+|No|컬럼 한글명|컬럼 영문명|데이터 타입|제약 조건|비고|
+|---|---|---|---|---|---|
+|1|주문 상품 ID|`order_item_id`|`BIGINT`|PK|주문 상품의 고유 식별자|
+|2|주문 ID|`order_id`|`BIGINT`|FK|`orders.order_id` 참조|
+|3|상품 ID|`product_id`|`BIGINT`|FK|`product.product_id` 참조|
+|4|주문 상품명|`product_name`|`VARCHAR(100)`||역정규화된 스냅샷 데이터|
+|5|주문 가격|`order_price`|`INT`||주문 당시 가격|
+|6|주문 수량|`order_quantity`|`INT`||상품 개수|
+|7|생성일|`created_at`|`DATETIME`||생성 시점|
+|8|수정일|`updated_at`|`DATETIME`||수정 시 자동 갱신|
+
+---
+
+### Delivery 테이블
+
+**설명**: 주문의 배송 정보를 저장 (주문과 1:1 관계)
+
+|No|컬럼 한글명|컬럼 영문명|데이터 타입|제약 조건|비고|
+|---|---|---|---|---|---|
+|1|배송 ID|`delivery_id`|`BIGINT`|PK|배송의 고유 식별자|
+|2|주문 ID|`order_id`|`BIGINT`|FK, UQ|`orders.order_id` 참조|
+|3|배송 상태|`delivery_status`|`VARCHAR(20)`||기본값 `'READY'`|
+|4|운송장 번호|`tracking_no`|`VARCHAR(50)`|NULL|택배사 발급 번호|
+|5|배송지|`ship_addr`|`VARCHAR(255)`||실제 배송 주소|
+|6|생성일|`created_at`|`DATETIME`||생성 시점|
+|7|수정일|`updated_at`|`DATETIME`||수정 시 자동 갱신|
+
+---
+
+### Pay 테이블
+
+**설명**: 주문 결제 정보를 저장 (주문과 1:1 관계)
+
+|No|컬럼 한글명|컬럼 영문명|데이터 타입|제약 조건|비고|
+|---|---|---|---|---|---|
+|1|결제 ID|`pay_id`|`BIGINT`|PK|결제의 고유 식별자|
+|2|주문 ID|`order_id`|`BIGINT`|FK, UQ|`orders.order_id` 참조|
+|3|결제 수단|`pay_method`|`VARCHAR(50)`||예: CREDIT_CARD, BANK_TRANSFER|
+|4|결제 금액|`pay_amount`|`INT`||실제 결제 금액|
+|5|결제 상태|`pay_status`|`VARCHAR(20)`||예: PAID, FAILED, CANCELED|
+|6|결제일시|`paid_at`|`DATETIME`|NULL|결제 완료 시점|
+|7|생성일|`created_at`|`DATETIME`||생성 시점|
+|8|수정일|`updated_at`|`DATETIME`||수정 시 자동 갱신|
